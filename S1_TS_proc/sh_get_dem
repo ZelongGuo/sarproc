@@ -1,0 +1,205 @@
+#!/bin/bash
+
+ #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ # Function: download, merge and replace unreasonable values in 30-m DEM 
+ # Input: 
+	# which DEM to use: NASADEM or SRTMDEM 
+ # Output:
+	# merged and non-abnormal-values DEM  
+ # Author: Zelong Guo, @GFZ, Potadam
+ # Email: zelong.guo@gfz-potsdam.de
+ # First Version: 23/11/2020,09:02
+ # NOTE: This script is based on GAMMA software
+ #       This script is utilized the script written by Songhu Wu and LSGI
+ #+++++ Program Function Explaination +++++#
+ #----- Program Grammar Explaination  -----#
+ #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ #+++++++++++++++++++++++++++++++++++++ update log ++++++++++++++++++++++++++++++++++++++++++++
+# 10.12.2020, 16:58 @ GFZ: debuged (500) Internal Server Error in wget with '-U "Opera 11.0"';
+#                          the option of displaying DEM is added;
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#++++++++++++++++++++++++++++++ application +++++++++++++++++++++++++++++
+# applied in: 
+#   1. sh_prechecking
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ version="30/12/2020"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "6"  ]; then
+	cat<<END && exit 1 
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Download, merge and replace unreasonable values in 30-m DEM 
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	23/11/2020
+  Last edited:		$version
+
+  usage:		$(basename $0) <max_lat> <min_lat> <max_lon> <min_lon> <Mission_type> <disdem_flag>
+  
+  <max_lat>:        (input) the maximum latitude of interesting area
+  <min_lat>:        (input) the minimum latitude of interesting area
+  <max_lon>:        (input) the maximum longitude of interesting area
+  <min_lon>:        (input) the minimum longitude of interesting area
+  <Mission_type>:   (input) NASADEM or SRTMDEM
+  <disdem_flag>:    (input) if display DEM or not: YES/NO
+  
+
+  Note:         This script is based on GAMMA software.
+                This script is utilized the script written by Songhu Wu and LSGI.
+
+            CURRENT DIR: $PWD
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+ 
+
+#+++++++++++++++++++++++++++++++++++++++++ look for the files you need ++++++++++++++++++++++++++++++++++++++++++++#
+max_lat=$1 
+min_lat=$2
+max_lon=$3 
+min_lon=$4
+Mission_type=$5
+disdem_flag=$6
+
+# download the hgt file
+echo "processing in matlab....."
+filename=download_dem.m
+
+cat > $filename <<EOF
+clear;clc
+min_lat=floor($min_lat);
+min_lon=floor($min_lon);
+max_lat=ceil($max_lat);
+max_lon=ceil($max_lon);
+lat_ix=min_lat:max_lat;
+lon_ix=min_lon:max_lon;
+lat_ix(end)=[];lon_ix(end)=[];
+num_hgt(1)=length(lat_ix);
+num_hgt(2)=length(lon_ix);
+[X,Y]=meshgrid(lat_ix,lon_ix);
+[m,n]=size(X);
+x=reshape(X,m*n,1);
+y=reshape(Y,m*n,1);
+corner_ix=[x,y];
+
+flag='$Mission_type';
+if flag=='SRTMDEM' | flag=='srtmdem'
+    fid=fopen('cover_corner_srtm','w');
+    for i=1:size(corner_ix,1)
+        if corner_ix(i,1)>=0
+            lat_direction=['N'];
+        else
+            lat_direction=['S'];
+            corner_ix(i,1)=abs(corner_ix(i,1));
+        end
+ 
+        if corner_ix(i,2)>=0
+            lon_direction=['E'];
+        else
+            lon_direction=['W'];
+            corner_ix(i,2)=abs(corner_ix(i,2));
+        end
+        dem_name=[lat_direction,num2str(corner_ix(i,1),'%02d'),lon_direction,num2str(corner_ix(i,2),'%03d'),'.SRTMGL1.hgt.zip'];
+        fprintf(fid,'%s\n',dem_name);
+    end
+elseif flag=='NASADEM' | flag=='nasadem'
+    fid=fopen('cover_corner_nasa','w');
+    for i=1:size(corner_ix,1)
+        if corner_ix(i,1)>=0
+            lat_direction=['n'];
+        else
+            lat_direction=['s'];
+            corner_ix(i,1)=abs(corner_ix(i,1));
+        end
+ 
+        if corner_ix(i,2)>=0
+            lon_direction=['e'];
+        else
+            lon_direction=['w'];
+            corner_ix(i,2)=abs(corner_ix(i,2));
+        end
+        dem_name=['NASADEM_HGT_',lat_direction,num2str(corner_ix(i,1),'%02d'),lon_direction,num2str(corner_ix(i,2),'%03d'),'.zip'];
+        fprintf(fid,'%s\n',dem_name);
+    end
+else
+    fprintf("ERROR with the DEM Mission Type, please input 'NASADEM' or 'SRTMDEM' !!!\n");
+    exit;
+end
+
+fclose all;
+EOF
+
+chmod +x $filename
+matlab -nodesktop -nosplash -nodisplay -r "run ./$filename; quit;"
+echo "Find the hgt files name"
+rm -f download_dem.m
+
+if [ "$Mission_type" == "NASADEM" ] || [ "$Mission_type" == "nasadem" ]; then
+    lines=$(cat cover_corner_nasa | wc -w)
+elif [ "$Mission_type" == "SRTMDEM" ] || [ "$Mission_type" == "srtmdem" ]; then
+    lines=$(cat cover_corner_srtm | wc -w)
+fi
+[ "$lines" == "0" ]	&& echo "$0: ERROR with cover_coner_nasa or cover_coner_srtm!!!!" && exit
+
+#++++++++++++++++++++++++++++++++++++ download the files of NASADEM 1 ARC-SEC or SRTM 1 ARC-SEC DEM ++++++++++++++++++++++++++++++++++++++++++#
+NASADEM="https://e4ftl01.cr.usgs.gov/MEASURES/NASADEM_HGT.001/2000.02.11/"
+SRTMDEM="http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
+#SRTMDEM="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
+
+if [ "$Mission_type" == "NASADEM" ] || [ "$Mission_type" == "nasadem" ]; then
+	file_list=$(cat cover_corner_nasa)
+	for file_name in $file_list
+	do
+		wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${NASADEM}${file_name}
+		[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!" && exit
+		unzip $file_name	
+	done
+elif [ "$Mission_type" == "SRTMDEM" ] || [ "$Mission_type" == "srtmdem" ]; then
+	file_list=$(cat cover_corner_srtm)
+	for file_name in $file_list
+	do
+		wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${SRTMDEM}$file_name
+		[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!" && exit
+		unzip $file_name
+	done
+else
+	echo "$0: ERROR with the DEM Mission Type, please input 'NASADEM' or 'SRTMDEM' !!!"
+	exit
+
+fi
+#file_list=$(curl -s -u zelong0928:GuoZeLong0928 $NASADEM) 
+#[ "$?" -ne "0" ] && echo "Error! Please check!" && exit
+#echo "$file_list"
+
+#+++++++++++++++++++++++++++++++++++++++++++++++ convert .hgt files to GAMMA format ++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+[ -e DEM.tab ] && rm DEM.tab
+touch DEM.tab
+
+for hgt_file in $(ls *.hgt)
+do
+	dem_prefix=${hgt_file%.*}
+	srtm2dem $hgt_file $dem_prefix.dem $dem_prefix.dem_par   0 0 -
+	printf "%s.dem  %s.dem_par\n" $dem_prefix $dem_prefix >> DEM.tab
+done
+
+#一定注意参数选择1 0, 选择0 *，DEM拼接边缘就会出现细线！！！！
+multi_mosaic DEM.tab ${Mission_type}_final.dem ${Mission_type}_final.dem_par 1 0
+
+#++++++++++++++++++++++++++++++++++++++++++++++ if displaying dem or not +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+if [ "$disdem_flag" == "YES" ] || [ "$disdem_flag" == "Y" ] || [ "$disdem_flag" == "yes" ] || [ "$disdem_flag" == "y" ]; then
+    disdem_par ${Mission_type}_final.dem ${Mission_type}_final.dem_par
+fi
+
+#++++++++++++++++++++++++++++++++++++++++++++++++ delet redundant files ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+#ls | grep -v ${Mission_type}_final.dem | grep -v ${Mission_type}_final.dem_par | grep -v $0| xargs rm
+
+
+
+

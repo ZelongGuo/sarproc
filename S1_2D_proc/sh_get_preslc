@@ -1,0 +1,249 @@
+#!/bin/bash
+
+#05/01/2020
+
+
+
+
+#++++++++++++++++++++++++++++++++ input longitude, latitude and EQ UTC time (YYYYMMDDTHH:MM:SS) +++++++++++++++++++++++++++++#
+:<<vv
+lon="45.959"
+lat="34.911"
+EQUTC=20171112T18:18:17
+
+EQUTC_1=$(echo "$EQUTC" | awk -F "T" '{print $1}')
+EQUTC_2=$(echo "$EQUTC" | awk -F "T" '{print $2}')
+vv
+
+end_date_1=$(date -d "$EQUTC_1" "+%Y-%m-%d")
+end_date=$(echo "${end_date_1}T${EQUTC_2}UTC")
+start_date_1=$(date -d "$EQUTC_1 -13 days" "+%Y-%m-%d")
+start_date=$(echo "${start_date_1}T23:59:59UTC")
+
+
+#++++++++++++++++++++++++++++++ API parameters settings ++++++++++++++++++++++++++++++++++++#
+# platform: ALOS, A3, AIRSAR, AS, ERS, ERS‌-1, E1, ERS‌-2, E2, JERS‌-1, J1,
+#           RADARSAT‌-1, R1, SEASAT, SS, S1, Sentinel, Sentinel-1, Sentinel-1A, SA,
+#	    Sentinel-1B, SB, SMAP, SP, UAVSAR, UA.
+# IntersectsWith: polygon, linestring and point
+# beamMode: EW, IW ect.
+# flightDirection: D, A
+# processingLevel: SLC, RAW, OCN, METADATA_RAW ect..
+# start and/or acquisition time: start:3 months and a day ago
+#	                         end: now 
+# output: CSV, JSON, KML, METALINK ect.
+# 
+# polarization: VV, VH, HH, FULL
+# maxResults: Maximum number of data records to return from your query.
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+platform="S1"
+beammode="IW"
+processingLevel="SLC"
+output="metalink"
+
+
+echo "Now working with the ASCENDING data downloading..."
+#++++++++++++++++++++++++++++++++++++++++++++++++ ASCENDING data download ++++++++++++++++++++++++++++++++++++++++++#
+flightDirection="A"
+ASF="https://api.daac.asf.alaska.edu/services/search/param?platform=$platform&beamMode=$beammode&flightDirection=$flightDirection&processingLevel=$processingLevel&intersectsWith=point%28$lon+$lat%29&start=$start_date\&end=$end_date&output=$output"
+for ((i=0; i<20; i++))
+do
+	file_list=$(curl -s -u zelong:GuoZeLong0928 $ASF)
+	file_list=$(echo "$file_list" | grep '<file name.*<url type')
+	if [ "x$file_list" == "x" ]; then
+		sleep 3
+	else 
+		break
+	fi
+done
+[ "x$file_list" = "x" ] && echo " " && echo "$0: Grab file list failed from the ASF webset, please check it." && echo " " && exit 1
+echo "ASF website is Conected!"
+
+file_list=$(echo "$file_list" | sed 's/</\n/g' | grep 'url type' | awk -F ">" '{print $2}')
+echo "-----------------------------------------------------------------------------------------------------------------"
+echo "Links candidates:"
+echo "$file_list"
+echo "-----------------------------------------------------------------------------------------------------------------"
+
+#+++++++++++++++++TRACK/pass calculation and EQ$EQUTC_1.dat generation ++++++++++++++++++++++#
+[ -e EQ_$EQUTC_1.dat ] && rm EQ_$EQUTC_1.dat && touch EQ_$EQUTC_1.dat
+for i in $file_list
+do
+	SID=$(echo "$i" | awk -F "/" '{print $NF}'  | sed 's/_/ /g' | awk -F " " '{printf $1}')
+	ABSORB=$(echo "$i" | awk -F "/" '{print $NF}' | sed 's/_/ /g' | awk -F " " '{printf $7}')
+	AQUTIME=$(echo "$i" | awk -F "/" '{print $NF}' | sed 's/_/ /g' | awk -F " " '{printf $5}')
+	if [ "$SID" == "S1A" ]; then
+		RELOBS=$(echo $ABSORB | awk '{printf "%d", ($1-73)%175+1}')
+		echo "EQ_${EQUTC_1}_T${RELOBS}${flightDirection} $i" >> EQ_$EQUTC_1.dat
+		echo "$SID $AQUTIME $ABSORB $RELOBS"
+	elif [ "$SID" == "S1B" ]; then
+		RELOBS=$(echo $ABSORB | awk '{printf "%d", ($1-27)%175+1}')
+		echo "EQ_${EQUTC_1}_T${RELOBS}${flightDirection} $i" >> EQ_$EQUTC_1.dat
+		echo "$SID $AQUTIME $ABSORB $RELOBS"
+	else
+		echo "$0: ERROR with grabing platform (S1A or S1B)"
+		exit 1
+	fi
+done
+
+echo ""
+echo "Now working with the folders and link.list..."
+#++++++++++++++++++++++ creat folders and link.list ++++++++++++++++++++++++++++++#
+cat EQ_$EQUTC_1.dat | while read line
+do
+	Dir=$(echo "$line" | awk '{print $1}')
+	[ -d $Dir ] && rm -rf $Dir >/dev/null
+done
+
+cat EQ_$EQUTC_1.dat | while read line
+do
+	Dir=$(echo "$line" | awk '{print $1}')
+	link=$(echo "$line" | awk '{print $2}')
+	mkdir -p $Dir
+	cd $Dir
+	[ ! -e link.list ] && touch link.list
+	echo "$link" >> link.list
+	cd ..
+done
+
+#++++++++++++ cd folders ++++++++++++++#
+Dirs=$(cat EQ_$EQUTC_1.dat | awk '{print $1}' | sort | uniq)
+
+for i in $Dirs
+do
+	cd $i
+	num_links=$(cat link.list | wc -l)
+	words_links=$(cat link.list | wc -w)
+	if [ "$num_links" -le "1" ] && [ "$words_links" -eq "0"  ]; then
+		echo "$0: There is no link in $i" && echo " "
+	elif [ "$num_links" -ge "1" ] && [ "$words_links" -ne "0"  ]; then
+		links=$(cat link.list | head -n 1) # first line grabing
+		echo "-----------------------------------------------------------------------------------------------------------------"
+		echo "links candidates in $i is:"
+		cat link.list | xargs echo
+		echo "Finally downloaded link in $i is:"
+		echo "$links"
+		echo "-----------------------------------------------------------------------------------------------------------------"
+		[ ! -e link.list.download ] && touch link.list.download
+		echo "$links" >> link.list.download
+		#wget
+		#wget
+	else
+		echo "$0: ERROR with the link.list in $i" && echo " "
+	fi
+	rm link.list
+	cd ..
+
+done
+echo "# Preseismic SLC Data:" >> EQ_$EQUTC_1.log					
+cat EQ_$EQUTC_1.dat >> EQ_$EQUTC_1.log
+rm EQ_$EQUTC_1.dat
+
+
+echo " "
+echo " "
+echo " "
+echo "ASCENDING data downloading is finished, now working with the DESCENDING data downloading..."
+#++++++++++++++++++++++++++++++++++++++++++++++++ DESCENDING data download ++++++++++++++++++++++++++++++++++++++++++#
+flightDirection="D"
+ASF="https://api.daac.asf.alaska.edu/services/search/param?platform=$platform&beamMode=$beammode&flightDirection=$flightDirection&processingLevel=$processingLevel&intersectsWith=point%28$lon+$lat%29&start=$start_date\&end=$end_date&output=$output"
+for ((i=0; i<20; i++))
+do
+	file_list=$(curl -s -u zelong:GuoZeLong0928 $ASF)
+	file_list=$(echo "$file_list" | grep '<file name.*<url type')
+	if [ "x$file_list" == "x" ]; then
+		sleep 3
+	else 
+		break
+	fi
+done
+[ "x$file_list" = "x" ] && echo " " && echo "$0: Grab file list failed from the ASF webset, please check it." && echo " " && exit 1
+echo "ASF website is conected!"
+
+file_list=$(echo "$file_list" | sed 's/</\n/g' | grep 'url type' | awk -F ">" '{print $2}')
+echo "-----------------------------------------------------------------------------------------------------------------"
+echo "Links candidates:"
+echo "$file_list"
+echo "-----------------------------------------------------------------------------------------------------------------"
+
+#+++++++++++++++++TRACK/pass calculation and EQ$EQUTC_1.dat generation ++++++++++++++++++++++#
+[ -e EQ_$EQUTC_1.dat ] && rm EQ_$EQUTC_1.dat && touch EQ_$EQUTC_1.dat
+for i in $file_list
+do
+	SID=$(echo "$i" | awk -F "/" '{print $NF}'  | sed 's/_/ /g' | awk -F " " '{printf $1}')
+	ABSORB=$(echo "$i" | awk -F "/" '{print $NF}' | sed 's/_/ /g' | awk -F " " '{printf $7}')
+	AQUTIME=$(echo "$i" | awk -F "/" '{print $NF}' | sed 's/_/ /g' | awk -F " " '{printf $5}')
+	if [ "$SID" == "S1A" ]; then
+		RELOBS=$(echo $ABSORB | awk '{printf "%d", ($1-73)%175+1}')
+		echo "EQ_${EQUTC_1}_T${RELOBS}${flightDirection} $i" >> EQ_$EQUTC_1.dat
+		echo "$SID $AQUTIME $ABSORB $RELOBS"
+	elif [ "$SID" == "S1B" ]; then
+		RELOBS=$(echo $ABSORB | awk '{printf "%d", ($1-27)%175+1}')
+		echo "EQ_${EQUTC_1}_T${RELOBS}${flightDirection} $i" >> EQ_$EQUTC_1.dat
+		echo "$SID $AQUTIME $ABSORB $RELOBS"
+	else
+		echo "$0: ERROR with grabing platform (S1A or S1B)"
+		exit 1
+	fi
+done
+
+echo ""
+echo "Now working with the folders and link.list..."
+#++++++++++++++++++++++ creat folders and link.list ++++++++++++++++++++++++++++++#
+cat EQ_$EQUTC_1.dat | while read line
+do
+	Dir=$(echo "$line" | awk '{print $1}')
+	[ -d $Dir ] && rm -rf $Dir >/dev/null
+done
+
+cat EQ_$EQUTC_1.dat | while read line
+do
+	Dir=$(echo "$line" | awk '{print $1}')
+	link=$(echo "$line" | awk '{print $2}')
+	mkdir -p $Dir
+	cd $Dir
+	[ ! -e link.list ] && touch link.list
+	echo "$link" >> link.list
+	cd ..
+done
+
+#++++++++++++ cd folders ++++++++++++++#
+Dirs=$(cat EQ_$EQUTC_1.dat | awk '{print $1}' | sort | uniq)
+
+for i in $Dirs
+do
+	cd $i
+	num_links=$(cat link.list | wc -l)
+	words_links=$(cat link.list | wc -w)
+	if [ "$num_links" -le "1" ] && [ "$words_links" -eq "0"  ]; then
+		echo "$0: There is no link in $i" && echo " "
+	elif [ "$num_links" -ge "1" ] && [ "$words_links" -ne "0"  ]; then
+		links=$(cat link.list | head -n 1) # first line grabing
+		echo "-----------------------------------------------------------------------------------------------------------------"
+		echo "links candidates in $i is:"
+	#	cat link.list | xargs echo
+		echo `cat link.list`
+		echo "Finally downloaded link in $i is:"
+		echo "$links"
+		echo "-----------------------------------------------------------------------------------------------------------------"
+		[ ! -e link.list.download ] && touch link.list.download
+		echo "$links" >> link.list.download
+		#wget
+	else
+		echo "$0: ERROR with the link.list in $i" && echo " "
+	fi
+	rm link.list
+	cd ..
+
+done			
+cat EQ_$EQUTC_1.dat  >> EQ_$EQUTC_1.log	
+echo "" >> EQ_$EQUTC_1.log	
+rm EQ_$EQUTC_1.dat
+
+
+
+
+
+
+
+

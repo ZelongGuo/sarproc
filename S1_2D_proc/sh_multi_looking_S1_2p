@@ -1,0 +1,223 @@
+#!/bin/bash
+
+# This script will generate multi-looking images of master and slave and geocoding with DEM 
+# Zelong Guo @GFZ
+# zelong@gfz-potsdam.de
+# First Version: 17/01/2020
+
+
+echo "sh_multi_looking.log" 
+printf "Now the executing directory is %s\n" $PWD
+echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+reference=$1
+slave=$2
+procdir=$3
+datadir=$4
+demdir=$5
+miss_type=$6
+m1_fswa=$7
+m1_lswa=$8
+m1_fbur=$9
+m1_lbur=${10}
+m2_fswa=${11}
+m2_lswa=${12}
+m2_fbur=${13}
+m2_lbur=${14}
+ran_look=${15}
+azi_look=${16}
+dem_northover=${17}
+dem_eastover=${18}
+
+miss_type=$(echo "$miss_type" | tr 'A-Z' 'a-z')
+
+cd $procdir
+mkdir -p multi_looking
+cd multi_looking
+[ -e "SLC_tab_ref" ] && rm SLC_tab_ref && touch SLC_tab_ref
+if [ "$miss_type" == "s1a" ] || [ "$miss_type" == "s1b" ]; then
+	if [ "$m1_fswa" == "$m1_lswa" ]; then
+		echo "$datadir/$reference.iw$m1_fswa.sel.slc $datadir/$reference.iw$m1_fswa.sel.slc.par $datadir/$reference.iw$m1_fswa.sel.slc.TOPS_par" >> SLC_tab_ref
+	elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "2" ]; then
+		echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab_ref
+		echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+	elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "3" ]; then
+		echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab_ref
+		echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+		echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab_ref
+	elif [ "$m1_fswa" == "2" ] && [ "$m1_lswa" == "3" ]; then
+		echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+		echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab_ref
+	else
+		echo "$0: ERROR with settings of swathes! Please check it!" && exit 1
+	fi		
+elif [ "$miss_type" == "both" ]; then	
+	#++++++ determining the reference is s1a or s1b ++++++#
+	ref_flag=$(ls $datadir/$reference*sel.slc.par | xargs cat | grep 'title' | sed -n 1p | awk '{print $2}' | awk -F '-iw' '{print $1}')
+	if [ "$ref_flag" == "s1a" ]; then
+		if [ "$m1_fswa" == "$m1_lswa" ]; then
+			echo "$datadir/$reference.iw$m1_fswa.sel.slc $datadir/$reference.iw$m1_fswa.sel.slc.par $datadir/$reference.iw$m1_fswa.sel.slc.TOPS_par" >> SLC_tab_ref
+		elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "2" ]; then
+			echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+		elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "3" ]; then
+			echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab_ref
+		elif [ "$m1_fswa" == "2" ] && [ "$m1_lswa" == "3" ]; then
+			echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab_ref
+		else
+			echo "$0: ERROR with settings of swathes! Please check it!" && exit 1
+		fi	
+	fi	
+	if [ "$ref_flag" == "s1b" ]; then
+		if [ "$m2_fswa" == "$m2_lswa" ]; then
+			echo "$datadir/$reference.iw$m2_fswa.sel.slc $datadir/$reference.iw$m2_fswa.sel.slc.par $datadir/$reference.iw$m2_fswa.sel.slc.TOPS_par" >> SLC_tab_ref
+		elif [ "$m2_fswa" == "1" ] && [ "$m2_lswa" == "2" ]; then
+			echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+		elif [ "$m2_fswa" == "1" ] && [ "$m2_lswa" == "3" ]; then
+			echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab_ref
+		elif [ "$m2_fswa" == "2" ] && [ "$m2_lswa" == "3" ]; then
+			echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab_ref
+			echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab_ref
+		else
+			echo "$0: ERROR with settings of swathes! Please check it!" && exit 1
+		fi	
+	fi	
+else 
+	echo "$0: ERROR with the generating of SLC_tab_ref, please check it!" && echo "" && exit 1
+		
+fi
+
+[ -e "SLC_tab_sla" ] && rm SLC_tab_sla && touch SLC_tab_sla
+if [ "$miss_type" == "s1a" ] || [ "$miss_type" == "s1b" ]; then
+	if [ "$m1_fswa" == "$m1_lswa" ]; then
+		echo "$datadir/$slave.iw$m1_fswa.sel.slc $datadir/$slave.iw$m1_fswa.sel.slc.par $datadir/$slave.iw$m1_fswa.sel.slc.TOPS_par" >> SLC_tab_sla
+	elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "2" ]; then
+		echo "$datadir/$slave.iw1.sel.slc $datadir/$slave.iw1.sel.slc.par $datadir/$slave.iw1.sel.slc.TOPS_par" >> SLC_tab_sla
+		echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+	elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "3" ]; then
+		echo "$datadir/$slave.iw1.sel.slc $datadir/$slave.iw1.sel.slc.par $datadir/$slave.iw1.sel.slc.TOPS_par" >> SLC_tab_sla
+		echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+		echo "$datadir/$slave.iw3.sel.slc $datadir/$slave.iw3.sel.slc.par $datadir/$slave.iw3.sel.slc.TOPS_par" >> SLC_tab_sla
+	elif [ "$m1_fswa" == "2" ] && [ "$m1_lswa" == "3" ]; then
+		echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+		echo "$datadir/$slave.iw3.sel.slc $datadir/$slave.iw3.sel.slc.par $datadir/$slave.iw3.sel.slc.TOPS_par" >> SLC_tab_sla
+	else
+		echo "$0: ERROR with settings of swathes! Please check it!" && exit 1
+	fi		
+elif [ "$miss_type" == "both" ]; then	
+	#++++++ determining the slave is s1a or s1b ++++++#
+	sla_flag=$(ls $datadir/$slave*sel.slc.par | xargs cat | grep 'title' | sed -n 1p | awk '{print $2}' | awk -F '-iw' '{print $1}')
+	if [ "$sla_flag" == "s1a" ]; then
+		if [ "$m1_fswa" == "$m1_lswa" ]; then
+			echo "$datadir/$slave.iw$m1_fswa.sel.slc $datadir/$slave.iw$m1_fswa.sel.slc.par $datadir/$slave.iw$m1_fswa.sel.slc.TOPS_par" >> SLC_tab_sla
+		elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "2" ]; then
+			echo "$datadir/$slave.iw1.sel.slc $datadir/$slave.iw1.sel.slc.par $datadir/$slave.iw1.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+		elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "3" ]; then
+			echo "$datadir/$slave.iw1.sel.slc $datadir/$slave.iw1.sel.slc.par $datadir/$slave.iw1.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw3.sel.slc $datadir/$slave.iw3.sel.slc.par $datadir/$slave.iw3.sel.slc.TOPS_par" >> SLC_tab_sla
+		elif [ "$m1_fswa" == "2" ] && [ "$m1_lswa" == "3" ]; then
+			echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw3.sel.slc $datadir/$slave.iw3.sel.slc.par $datadir/$slave.iw3.sel.slc.TOPS_par" >> SLC_tab_sla
+		else
+			echo "$0: ERROR with settings of swathes! Please check it!" && exit 1
+		fi	
+	fi	
+	if [ "$sla_flag" == "s1b" ]; then
+		if [ "$m2_fswa" == "$m2_lswa" ]; then
+			echo "$datadir/$slave.iw$m2_fswa.sel.slc $datadir/$slave.iw$m2_fswa.sel.slc.par $datadir/$slave.iw$m2_fswa.sel.slc.TOPS_par" >> SLC_tab_sla
+		elif [ "$m2_fswa" == "1" ] && [ "$m2_lswa" == "2" ]; then
+			echo "$datadir/$slave.iw1.sel.slc $datadir/$slave.iw1.sel.slc.par $datadir/$slave.iw1.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+		elif [ "$m2_fswa" == "1" ] && [ "$m2_lswa" == "3" ]; then
+			echo "$datadir/$slave.iw1.sel.slc $datadir/$slave.iw1.sel.slc.par $datadir/$slave.iw1.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw3.sel.slc $datadir/$slave.iw3.sel.slc.par $datadir/$slave.iw3.sel.slc.TOPS_par" >> SLC_tab_sla
+		elif [ "$m2_fswa" == "2" ] && [ "$m2_lswa" == "3" ]; then
+			echo "$datadir/$slave.iw2.sel.slc $datadir/$slave.iw2.sel.slc.par $datadir/$slave.iw2.sel.slc.TOPS_par" >> SLC_tab_sla
+			echo "$datadir/$slave.iw3.sel.slc $datadir/$slave.iw3.sel.slc.par $datadir/$slave.iw3.sel.slc.TOPS_par" >> SLC_tab_sla
+		else
+			echo "$0: ERROR with settings of swathes! Please check it!" && exit 1
+		fi	
+	fi	
+else 
+	echo "$0: ERROR with the generating of SLC_tab_sla, please check it!" && echo "" && exit 1
+		
+fi
+
+#+++++ now mosaic the reference image +++++#
+
+SLC_mosaic_S1_TOPS SLC_tab_ref $reference.msc.slc $reference.msc.slc.par $ran_look $azi_look 1
+SLC_mosaic_S1_TOPS SLC_tab_sla $slave.msc.slc $slave.msc.slc.par $ran_look $azi_look 1
+range_samples_msc=$(cat $reference.msc.slc.par | awk '/range_samples:/ {print $2}')
+azimuth_lines_msc=$(cat $reference.msc.slc.par | awk '/azimuth_lines:/ {print $2}')
+rasSLC $reference.msc.slc $range_samples_msc 1 $azimuth_lines_msc $ran_look $azi_look - - - - - $reference.$ran_look\_$azi_look.msc.slc.bmp
+
+range_samples_msc=$(cat $slave.msc.slc.par | awk '/range_samples:/ {print $2}')
+azimuth_lines_msc=$(cat $slave.msc.slc.par | awk '/azimuth_lines:/ {print $2}')
+rasSLC $slave.msc.slc $range_samples_msc 1 $azimuth_lines_msc $ran_look $azi_look - - - - - $slave.$ran_look\_$azi_look.msc.slc.bmp
+
+
+#+++++ multi_looking form msc.slc to mli ++++++#
+multi_look $reference.msc.slc $reference.msc.slc.par $reference.mli $reference.mli.par $ran_look $azi_look 
+width_mli=$(cat $reference.mli.par | awk '/range_samples:/ {print $2} ')
+line_mli=$(cat $reference.mli.par | awk '/azimuth_lines:/ {print $2} ')
+raspwr $reference.mli $width_mli 1 - 1 1 - - - $reference.mli.bmp
+
+multi_look $slave.msc.slc $slave.msc.slc.par $slave.mli $slave.mli.par $ran_look $azi_look 
+width_mli=$(cat $slave.mli.par | awk '/range_samples:/ {print $2} ')
+line_mli=$(cat $slave.mli.par | awk '/azimuth_lines:/ {print $2} ')
+raspwr $slave.mli $width_mli 1 - 1 1 - - - $slave.mli.bmp
+
+
+#+++++ if subset or not ++++++#
+
+
+
+
+# apply an oversampling such that the resulting pixels are of the order of 20 meters in both directions
+# form look-up tables from the coregitration of dem and mli, resampling or oversampling dem file to proper resolution cell
+gc_map $reference.mli.par - $demdir/*.dem_par $demdir/*.dem EQA.$reference.dem_par EQA.$reference.dem EQA.$reference.lt $dem_northover $dem_eastover EQA.$reference.sim_sar EQA.u EQA.v EQA.$reference.inc - - EQA.$reference.ls_map
+width_EQA=$(cat EQA.$reference.dem_par | awk '/width:/ {print $2} ')
+line_EQA=$(cat EQA.$reference.dem_par | awk '/nlines:/ {print $2} ')
+#disdem_par EQA.$reference.dem EQA.$reference.dem_par
+#dismph EQA.$reference.lt $width_EQA
+#dispwr EQA.$reference.sim_sar $width_EQA
+
+# check the quality of the initial geocoding / apply a refinement
+# get the simulated backscatter image pix_gamma0 on slant geometry based on DEM
+pixel_area $reference.mli.par EQA.$reference.dem_par EQA.$reference.dem EQA.$reference.lt EQA.$reference.ls_map EQA.$reference.inc $reference.pix_sigma0 $reference.pix_gamma0 10 1
+#dis2pwr $reference.pix_gamma0 $reference.mli $width_mli $width_mli
+
+# computation of offset between pix_gamma0 and mli and generation of registration polynomial
+create_diff_par $reference.mli.par - $reference.diff_par 1 0
+offset_pwrm $reference.pix_gamma0 $reference.mli $reference.diff_par EQA.offs EQA.snr 512 512 EQA.offsets 1 16 16 0.1 
+offset_fitm EQA.offs EQA.snr $reference.diff_par EQA.coffs EQA.coffsets 0.1 1 
+offset_pwrm $reference.pix_gamma0 $reference.mli $reference.diff_par EQA.offs EQA.snr 256 256 EQA.offsets 2 32 32 0.1
+offset_fitm EQA.offs EQA.snr $reference.diff_par EQA.coffs EQA.coffsets 0.15 3
+
+# apply geocoding using refined lookup table
+gc_map_fine EQA.$reference.lt $width_EQA $reference.diff_par EQA.$reference.lt_fine 1
+
+# transform between SAR geometry and map
+# backward geocoding from SAR to map coordinates 
+geocode_back $reference.mli $width_mli EQA.$reference.lt_fine EQA.$reference.mli $width_EQA $line_EQA 5 0 - - 3
+raspwr EQA.$reference.mli $width_EQA - - - - - - - EQA.$reference.mli.bmp
+
+# transform SRTM height into SAR geometry
+geocode EQA.$reference.lt_fine EQA.$reference.dem $width_EQA $reference.hgt.SRTM $width_mli $line_mli 2 0
+rashgt $reference.hgt.SRTM $reference.mli $width_mli - - - - - 150 - - - $reference.hgt.SRTM.bmp
+
+
+cd $procdir
+
+echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+date "+%Y-%m-%d %H:%M:%S"
+printf "\n\n\n"

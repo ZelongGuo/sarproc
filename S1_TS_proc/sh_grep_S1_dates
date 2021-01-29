@@ -1,0 +1,238 @@
+#!/bin/bash
+
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ # Function: grep the dates (YYYYMMDD) from the folder of S1 files
+ #	     this script can be used for pre- group batching of S1 data
+ # Input: 
+	# the path of the folder
+	# starting date
+	# ending date
+	# mission_type
+ # Output:
+	# date table from starting date to ending date in the folder as grep_dates_s1a and/or grep_dates_s1b in $PWD
+ # Author: Zelong Guo, @GFZ, Potadam
+ # Email: zelong.guo@gfz-potsdam.de
+ # First Version: 29/11/2020,12:06
+ #+++++ Program Function Explaination +++++#
+ #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#+++++++++++++++++++++++++++++++++++++ update log ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 12.12.2020, 21:14 @ GFZ: mission_type is added to output grep_dates_s1a and/or grep_dates_s1b
+# 26.12.2020, 11:54 @ zum wasserturm: debug that original sar path contains both of zip and unzip files
+# 30.12.2020, 19:41 @ zum wasserturm: dubug that data path contains s1a unzip and s1b zip files
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#++++++++++++++++++++++++++++++ application +++++++++++++++++++++++++++++
+# applied in: 
+#   1. sh_prechecking.sh
+#   2. sh_gamma2stamps
+#   3. sh_gamma.sh
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+version="30/12/2020"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "4"  ]; then
+	cat<<END && exit 1 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Grep the dates (YYYYMMDD) from the folder of S1 files, this script can be used for pre- group batching of S1 data
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	29/11/2020
+  Last edited:		$version
+
+  usage:		$(basename $0) <path> <grep_start> <grep_stop> <miss_type>
+  
+  <path>:       (input) the path of S1 SAR files (i.e. the path cintainng S1[AB]_IW_SLC_* files)
+  <grep_start>: (input) the start date
+  <grep_stop>:  (input) the stop data
+  <miss_type>:  (input) mission type, S1A, S1B or BOTH
+  
+  [grep_dates_s1a]: (output) date list with S1A
+  [grep_dates_s1b]: (output) date list with S1B
+  
+  
+  Description: $(basename $0) is employed for extracting the date list from S1[AB]_IW_SLC_* data folder
+  
+  Note:     This script will generate the files under current directory.
+
+            CURRENT DIR: $PWD
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+
+# input the path of the original SAR zip files (i.e. the path of downloaded SAR files)
+# the folder shoud contains the ZIP files only
+#path="/misc/zs7/Zelong/2017_Iraq-Iran_EQ/T072AA"
+path=$1
+
+# deleting the blank space and tab in the directory
+#path=$(echo "$path" | sed 's/ //g' | sed 's/    //g')
+path=$(echo $path)
+# checking and deleting '/' to the postfix of inpath
+postfix_path=$(echo "${path: -1}")
+[ "$postfix_path" == "/" ] && path=${path%/}
+
+# input the start dates of starting and ending as in YYYYMMDD 
+#grep_start="20171123"
+#grep_stop="20181130"
+grep_start=$2
+grep_stop=$3
+mission_type=$4
+mission_type=$(echo $mission_type | tr 'A-Z' 'a-z')
+
+file_list=$(ls -1 $path| sed 's/\// /g' | awk -F ' ' '{print $NF}')
+
+#+++++++++++++++++++++++++ one of the zip and unzip files, or both of them exsit ++++++++++++++++++++++#
+#zip_flag=$(echo "$file_list" | grep 'S1[AB]_IW_SLC_' | grep 'zip')
+#if [ ! -n "$zip_flag" ]; then
+#    echo "There are no zip files in $path."
+#else
+#    file_list=$(echo "$file_list" | grep 'S1[AB]_IW_SLC_' | grep 'zip')
+#fi
+
+rm -f grep_dates_s1* >/dev/null
+
+if [ $mission_type == "s1a" ]; then
+    #echo "$file_list"
+    
+    zip_flag=$(echo "$file_list" | grep 'S1A_IW_SLC_' | grep 'zip')
+    if [ ! -n "$zip_flag" ]; then
+        echo "There are no S1A zip files in $path."
+    else
+        file_list=$(echo "$file_list" | grep 'S1A_IW_SLC_' | grep 'zip')
+    fi
+    
+    file_list_s1a=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1a' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    mission_type_flag=$(echo $file_list_s1a | wc -w)
+    [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1A data in the original SAR directory! Please check it!" && echo "" && exit 1
+    
+    # +%s in order to make comparison
+    time_start=$(date -d "$grep_start" "+%s")
+    time_stop=$(date -d "$grep_stop" "+%s")
+    [ -e "grep_S1_dates_$mission_type" ] && rm grep_S1_dates_$mission_type
+    echo "$mission_type dates:"
+    index=0;
+    for file_list_element in $file_list_s1a
+    do
+        time_element=$(date -d "$file_list_element" "+%s")
+        if [ "$index" == "0" ]; then
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" > grep_dates_$mission_type && echo "$file_list_element"
+        else
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" >> grep_dates_$mission_type && echo "$file_list_element"
+        fi	
+    let index+=1;
+    done
+    
+elif [ $mission_type == "s1b"  ]; then
+    #echo "$file_list"
+    
+    zip_flag=$(echo "$file_list" | grep 'S1B_IW_SLC_' | grep 'zip')
+    if [ ! -n "$zip_flag" ]; then
+        echo "There are no S1B zip files in $path."
+    else
+        file_list=$(echo "$file_list" | grep 'S1B_IW_SLC_' | grep 'zip')
+    fi
+        
+    file_list_s1b=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+     
+    mission_type_flag=$(echo $file_list_s1b | wc -w)
+    [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1B data in the original SAR directory! Please check it!" && echo "" && exit 1
+    
+    # +%s in order to make comparison
+    time_start=$(date -d "$grep_start" "+%s")
+    time_stop=$(date -d "$grep_stop" "+%s")
+    [ -e "grep_S1_dates_$mission_type" ] && rm grep_S1_dates_$mission_type
+    echo "$mission_type dates:"
+    index=0;
+    for file_list_element in $file_list_s1b
+    do
+        time_element=$(date -d "$file_list_element" "+%s")
+        if [ "$index" == "0" ]; then
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" > grep_dates_$mission_type && echo "$file_list_element"
+        else
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" >> grep_dates_$mission_type && echo "$file_list_element"
+        fi	
+    let index+=1;
+    done
+    
+elif [ $mission_type == "both" ]; then
+    #echo "$file_list"
+    zip_flag=$(echo "$file_list" | grep 'S1A_IW_SLC_' | grep 'zip')
+    if [ ! -n "$zip_flag" ]; then
+        echo "There are no S1A zip files in $path."
+        file_list1=$(echo "$file_list")
+    else
+        file_list1=$(echo "$file_list" | grep 'S1A_IW_SLC_' | grep 'zip')
+    fi
+    zip_flag=$(echo "$file_list" | grep 'S1B_IW_SLC_' | grep 'zip')
+    if [ ! -n "$zip_flag" ]; then
+        echo "There are no S1B zip files in $path."
+        file_list2=$(echo "$file_list")
+    else
+        file_list2=$(echo "$file_list" | grep 'S1B_IW_SLC_' | grep 'zip')
+    fi
+    
+    file_list_s1a=$(echo "$file_list1" | tr 'A-Z' 'a-z' | grep 's1a' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    file_list_s1b=$(echo "$file_list2" | tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    mission_type_flag=$(echo $file_list_s1a | wc -w)
+    [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1A data in the original SAR directory! Please check it!" && echo "" && exit 1
+    mission_type_flag=$(echo $file_list_s1b | wc -w)
+    [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1B data in the original SAR directory! Please check it!" && echo "" && exit 1
+     
+    # +%s in order to make comparison
+    time_start=$(date -d "$grep_start" "+%s")
+    time_stop=$(date -d "$grep_stop" "+%s")
+    [ -e "grep_S1_dates_s1a" ] && rm grep_S1_dates_s1a
+    [ -e "grep_S1_dates_s1b" ] && rm grep_S1_dates_s1b
+    
+    echo "s1a dates:"
+    index=0;
+    for file_list_element in $file_list_s1a
+    do
+        time_element=$(date -d "$file_list_element" "+%s")
+        if [ "$index" == "0" ]; then
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" > grep_dates_s1a && echo "$file_list_element"
+        else
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" >> grep_dates_s1a && echo "$file_list_element"
+        fi	
+    let index+=1;
+    done
+    
+    echo ""
+    echo "s1b dates:"
+    index=0;
+    for file_list_element in $file_list_s1b
+    do
+        time_element=$(date -d "$file_list_element" "+%s")
+        if [ "$index" == "0" ]; then
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" > grep_dates_s1b && echo "$file_list_element"
+        else
+            [ "$time_element" -ge "$time_start" ] && [ "$time_element" -le "$time_stop" ] && echo "$file_list_element" >> grep_dates_s1b && echo "$file_list_element"
+        fi	
+    let index+=1;
+    done
+    
+else
+    echo "$0: ERROR with the mission type!! Please check it!" && echo "" && exit 1
+fi
+
+
+
+# **************************************
+#file_list_need=$(echo "$file_list" |
+#	 awk -v time_start=$grep_start -v  time_end=$grep_stop '
+#	BEGIN{}
+#	{print $0} END{print time_start " " time_end}' )
+#echo "$file_list_need"
+
+#a=$(date -d "20200120" "+%s")
+#b=$(date -d "20200121" "+%s")
+#echo $a
+#echo $b
+# **************************************
+

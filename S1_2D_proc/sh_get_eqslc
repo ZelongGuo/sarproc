@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# This script is employed for automatical download Sentinel-1 SLC data when the longitude, latitude and EQ UTC are given, for
+# generation of coseismic deformation field with 2-pass DInSAR. In $PWD, EQ_YYYYMMDD_T*A/D floder will be generated. 
+# Zelong GUO
+# zelong.guo@gfz-potsdam.de
+# 05/01/2020
+
+export lon lat EQUTC EQUTC_1 EQUTC_2 
+
+
+#++++++++++++++++++++++++++++++++ input longitude, latitude and EQ UTC time (YYYYMMDDTHH:MM:SS) +++++++++++++++++++++++++++++#
+lon="45.959"
+lat="34.911"
+EQUTC=20171112T18:18:17
+
+EQUTC_1=$(echo "$EQUTC" | awk -F "T" '{print $1}')
+EQUTC_2=$(echo "$EQUTC" | awk -F "T" '{print $2}')
+
+[ -e EQ_$EQUTC_1.log ] && rm EQ_$EQUTC_1.log
+touch EQ_$EQUTC_1.log
+
+echo "NOW working with preseismic data downloading..."
+bash sh_get_preslc
+
+echo ""
+echo ""
+echo "******************************************************************************************************"
+echo "NOW working with preseismic data downloading..."
+bash sh_get_postslc
+
+
+
+echo ""
+echo ""
+echo "******************************************************************************************************"
+echo "Now set about downloading the SAR data..."
+dir=$(cat EQ_$EQUTC_1.log | grep '^[^#]' | awk -F " " '{print $1}' | sort | uniq)
+echo "Directory lists:"
+echo "$dir"
+
+for i in $dir
+do
+	cd $i
+	if [ -e "link.list.download" ]; then
+		num_list=$(cat link.list.download | wc -l)
+		if [ "$num_list" -eq "2" ]; then
+			#for j in `cat link.list.download`
+			#doi
+			mkdir -p data
+			mv link.list.download ./data
+			cd data
+			wget --no-check-certificate --user=zelong --password=GuoZeLong0928 -nv -c -i link.list.download
+			for j in `cat link.list.download | awk -F "/" '{print $NF}'`
+			do 
+				S1_extract_png $j
+			done
+			cd ..
+			
+		else
+			echo "The number of list in link.list.download is not 2."
+			echo "The downloading will be canceled and the folder $i will be deleted."
+			rm -rf $i >/dev/null
+		fi
+	else
+		echo "link.list.download is not existent in $i."
+		echo "The folder $i will be removed."
+		rm -rf $i >/dev/null
+	fi	
+	cd ..
+done

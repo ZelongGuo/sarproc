@@ -1,0 +1,89 @@
+#! /bin/csh -f
+
+#++++++++++++++++++++++++++++++ application +++++++++++++++++++++++++++++
+# applied in: 
+#   1. sh_gamma2stamps
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+echo "SLC_ovr2: Script to oversample or subsample SLC data in range and azimuth v1.0 1-Sep-2017 uw"
+echo " "
+if ($#argv < 3)then
+  echo "usage: SLC_ovr2 <SLC> <SLC_par> <SLC_ovr> <SLC_ovr_par> <r_ovr> [az_ovr]"
+  echo "       SLC               (input) SLC file (SCOMPLEX or FCOMPLEX, e.g. 20141126.SLC)"
+  echo "       SLC_par           (input) SLC parameter file (e.g. 20141126.SLC.par)"
+  echo "       SLC_ovr           (output) oversampled SLC file (same format as SLC)"
+  echo "       SLC_ovr_par       (output) SLC parameter file of oversampled SLC file"
+  echo "       r_ovr             range oversampling factor (e.g. 2.5)"
+  echo "       az_ovr            azimuth oversampling factor (e.g. 2.5, default = 1.0)"
+  exit
+endif
+
+# History:
+# 1-Sep-2017: initial version
+
+#defaults for input parameters
+set az_ovr = "1.0"
+set cleaning = "1"   # 1: yes
+
+set SLC = $1
+set SLC_par = $2
+set SLC_ovr = $3
+set SLC_ovr_par = $4
+set r_ovr = $5
+if ($#argv >= 6) set az_ovr = $6
+
+# echo "test if required input/output files and directories exist"
+if (-e "$1" == 0) then 
+  echo "ERROR: SLC ($1) does not exist"; exit(-1)
+endif 
+
+if (-e "$2" == 0) then 
+  echo "ERROR: SLC_par ($2) does not exist"; exit(-1)
+endif 
+
+# echo "range oversampling factor:   $r_ovr"
+# echo "azimuth oversampling factor: $az_ovr"
+
+#######################################################################################################
+
+# generate parameter file for oversampled SLC; adjust number of range samples and azimuth lines
+set range_samples = `awk '$1 == "range_samples:" {print $2}' $SLC_par` 
+set range_samples_ovr = `echo "$range_samples" "$r_ovr" | awk '{printf "%d", $1*$2}'`
+set azimuth_lines = `awk '$1 == "azimuth_lines:" {print $2}' $SLC_par` 
+set azimuth_lines_ovr = `echo "$azimuth_lines" "$az_ovr" | awk '{printf "%d", $1*$2}'`
+# echo "range_samples: $range_samples     range_samples_ovr: $range_samples_ovr"
+# echo "azimuth_lines: $azimuth_lines     azimuth_lines_ovr: $azimuth_lines_ovr"
+
+/bin/cp $SLC_par $SLC_par.tmp
+set_value $SLC_par.tmp $SLC_par.tmp "range_samples:" "$range_samples_ovr"
+set_value $SLC_par.tmp $SLC_par.tmp "azimuth_lines:" "$azimuth_lines_ovr"
+# other parameters are changed by SLC_interp
+
+set off = "SLC_ovr2.off"
+if (-e $off ) /bin/rm $off
+create_offset $SLC_par.tmp $SLC_par $off 1 1 1 0
+
+set azimuth_factor = `echo "$az_ovr" | awk '{printf "%e", 1./$1-1.}'`
+set range_factor = `echo "$r_ovr" | awk '{printf "%e", 1./$1-1.}'`
+set_value $off $off "azimuth_offset_polynomial:" "0.00000   0.0000e+00   $azimuth_factor   0.0000e+00   0.0000e+00   0.0000e+00"
+set_value $off $off "range_offset_polynomial:" "0.00000   $range_factor  0.0000e+00   0.0000e+00   0.0000e+00   0.0000e+00"
+# grep polynomial $off
+
+echo "oversampling SLC using program SLC_interp"
+echo "COMMAND: SLC_interp $SLC $SLC_par.tmp $SLC_par $off $SLC_ovr $SLC_ovr_par"
+SLC_interp $SLC $SLC_par.tmp $SLC_par $off $SLC_ovr $SLC_ovr_par > SLC_interp.logfile
+
+#######################################################################################################
+
+# cleaning
+if ( "$cleaning" )then
+  if ( -e $SLC_par.tmp )/bin/rm $SLC_par.tmp
+  if ( -e SLC_ovr2.off )/bin/rm SLC_ovr2.off
+  if ( -e SLC_interp.logfile )/bin/rm SLC_interp.logfile
+endif
+
+#######################################################################################################
+
+echo "$SLC_ovr     width: $range_samples_ovr   nlines: $azimuth_lines_ovr"
+
+exit

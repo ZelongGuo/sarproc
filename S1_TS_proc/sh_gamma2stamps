@@ -1,0 +1,272 @@
+#!/bin/bash
+
+# This script is emplyed to generate expected file structure form gamma to StaMPS
+# Zelong Guo, @GFZ, 22/12/2020
+# Running under the $procdir directory
+
+version="30/12/2020"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "9"  ]; then
+	cat<<END && exit 1 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Generate expected file structure form GAMMA to StaMPS.
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	22/12/2020
+  Last edited:		$version
+
+  usage:		$(basename $0)  <reference> <itab_type> <bperp_min> <bperp_max> <delta_T_min> <delta_T_max>
+                            <ran_look> <azi_look> <gacos_flag> [path] [grep_start] [grep_stop] [miss_type]
+  
+  <reference>:  (input) the date of reference image (YYYYMMDD)
+  <itab_type>:  (input) itab type (enter - for default):
+                        0: single reference (default)
+                        1: all pairs
+  <bperp_min>:  (input) minimum magnitude of bperp (m) (default = all, enter - for default)
+  <bperp_max>:  (input) maximum magnitude of bperp (m) (default = all, enter - for default)
+  <delta_T_min>:(input) minimum number of days between passes (default = 0, enter - for default)
+  <delta_T_max>:(input) maximum number of days between passes
+  <ran_look>:   (input) range looks
+  <azi_look>:   (input) azimuth looks
+  <gacos_flag>: (input) generate kml and date list file for gacos (1 for yes, 0 for no), if 1 (yes):
+         1. <path>:       (input) the path of S1 SAR files (i.e. the path cintainng S1[AB]_IW_SLC_* files)
+         2. <grep_start>: (input) the start date
+         3. <grep_stop>:  (input) the stop data
+         4. <miss_type>:  (input) mission type, S1A, S1B or BOTH
+        
+#  <type>:       (input) type of the time-series processing: PS or SBAS
+  	          
+	
+	!!! NOTE:   $(basename $0) should be run under procdir which should contain multi_looking, coreg and subset 
+                dorectories (ect.) generated from GAMMA processing!!!!!!
+  
+                INSAR_reference will be generated under procdir for PS
+
+  
+		CURRENT DIR: $PWD
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+
+reference=$1
+# for base_calc
+itab_type=$2
+bperp_min=$3
+bperp_max=$4
+delta_T_min=$5
+delta_T_max=$6
+ran_look=$7
+azi_look=$8
+#for GACOS inputing date list
+gacos_flag=$9     # (0 for no, 1 for yes)
+
+
+procdir=$(echo "$PWD")
+
+case $gacos_flag in
+    "0")
+        echo " "
+        echo "GACOS directory (APS) is not prepared."
+        echo "Another mothod for atmospheric correction should be considered."
+        echo " "
+        ;;
+    "1")
+        path=${10}
+        grep_start=${11}
+        grep_stop=${12}
+        miss_type=${13}
+        miss_type=$(echo $miss_type | tr 'A-Z' 'a-z')
+        ;;
+    *)
+        echo "$0: ERROR with the gacos_flag (0 or 1)!!!" && exit 1
+        ;;
+esac
+
+#---------------------------------------------------------------------------------------------#
+
+# deleting the blank space and tab in the directory
+procdir=$(echo $procdir)
+# checking and deleting '/' to the postfix of inpath
+postfix_path=$(echo "${procdir: -1}")
+[ "$postfix_path" == "/" ] && procdir=${procdir%/}
+
+#+++++++++++++++++++++++ preparation of directory and files ++++++++++++++++++++++++++++++++++#
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the preparation of directory and files..."
+mkdir -p INSAR_$reference
+cd INSAR_$reference
+rm -rf * >/dev/null
+
+cp $STAMPS_HOME/batching_stamps.m ./    
+cp $STAMPS_HOME/batching_stamps2.m ./   
+
+echo " "
+echo "Preparation of files is finished."
+echo " "
+
+#ls | grep -v ${Mission_type}_final.dem | grep -v ${Mission_type}_final.dem_par | grep -v $0| xargs rm
+
+
+#+++++++++++++++++++++++++++++++++++++++++ rslc ++++++++++++++++++++++++++++++++++++++++++++++#
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the rslc directory..."
+mkdir -p rslc
+cd rslc
+ln -s $procdir/coreg/????????.rslc ./
+ln -s $procdir/coreg/????????.rslc.par ./
+
+# under the rslc (rslc + rslc.par) directory
+# if interferograms have been multi-looked, then the rslc derived after coregistered in gamma should be subsampled
+if [ "$ran_look" != "1" ] || [ "$azi_look" != "1" ]; then
+    [ -e "filelist" ] && rm filelist
+    ls -1 | grep '^[0-9]' | grep 'rslc$' | sed 's/.rslc//g' > filelist
+
+    ran_factor=`echo "$ran_look" | awk '{printf "%.20f", 1./$1}'`
+    azi_factor=`echo "$azi_look" | awk '{printf "%.20f", 1./$1}'`
+    
+    while read line
+    do
+        echo "sh_SLC_resample $line.rslc $line.rslc.par ${line}_2.rslc ${line}_2.rslc.par $ran_factor $azi_factor"
+        sh_SLC_resample $line.rslc $line.rslc.par ${line}_2.rslc ${line}_2.rslc.par $ran_factor $azi_factor 1>/dev/null
+    done < filelist
+
+    rm ????????.rslc ????????.rslc.par
+    rename -v _2.rslc .rslc *
+      
+fi
+echo " "
+echo "rslc folder gets ready. "
+echo " "
+
+
+#++++++++++++++++++++++++++++++++++++++++++ diffo ++++++++++++++++++++++++++++++++++++++++++++#
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the diff0 directory..."
+cd $procdir/INSAR_$reference
+mkdir -p diff0
+cd diff0
+# copy *.diff to diff0
+cp $procdir/subset/????????_????????.diff ./
+# generate *.base 
+cp $procdir/subset/RSLC_tab ./
+ln -s $procdir/coreg/????????.rslc ./
+ln -s $procdir/coreg/????????.rslc.par ./
+
+# ERROR (only one image in the SLC_tab) may be throwed, but that's ok.
+index=1
+nlines=$(cat RSLC_tab | wc -l)
+echo "Therw are $nlines lines in the RSLC_tab file."
+cat RSLC_tab | while read line
+do
+	[ -e "$index.RSLC_tab" ] && rm $index.RSLC_tab
+	echo "$line" > $index.RSLC_tab
+	base_calc $index.RSLC_tab $reference.rslc.par $index.bperp_file $index.itab $itab_type 0 $bperp_min $bperp_max $delta_T_min $delta_T_max >/dev/null
+	slave=$(echo "$line" | awk -F '.rslc' '{print $1}')	
+	mv base.out ${reference}_${slave}.base
+	let index+=1
+done
+
+rm ${reference}_${reference}.diff ${reference}_${reference}.base
+rm RSLC_tab *.rslc *.rslc.par *.bperp_file *.RSLC_tab base_calc.log
+
+echo " "
+echo "diff0 folder gets ready. "
+echo " "
+
+
+#+++++++++++++++++++++++++++++++++++++++ geo ++++++++++++++++++++++++++++++++++++++++++++++++#
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the geo directory..."
+cd $procdir/INSAR_$reference
+mkdir -p geo
+cd geo
+# copy hgt.SRTM to geo folder
+cp $procdir/multi_looking/$reference.hgt.SRTM ./$reference.hgt.SRTM.dem.rdc
+
+# get the .lon and .lat files
+cd $procdir/multi_looking
+
+width_mli=$(cat $reference.mli.par | awk '/range_samples:/ {print $2} ')
+line_mli=$(cat $reference.mli.par | awk '/azimuth_lines:/ {print $2} ')
+width_EQA=$(cat EQA.$reference.dem_par | awk '/width:/ {print $2} ')
+
+dem_coord EQA.$reference.dem_par east north
+geocode EQA.$reference.lt_fine north $width_EQA $reference.lat $width_mli $line_mli 2 0 
+geocode EQA.$reference.lt_fine east $width_EQA $reference.lon $width_mli $line_mli 2 0
+
+mv ./east $procdir/INSAR_$reference/geo
+mv ./north $procdir/INSAR_$reference/geo
+mv ./$reference.lat $procdir/INSAR_$reference/geo
+mv ./$reference.lon $procdir/INSAR_$reference/geo
+
+echo " "
+echo "geo folder gets ready. "
+echo " "
+
+
+#++++++++++++++++++++++++++++++++++++++ dem ++++++++++++++++++++++++++++++++++++++++++++++++++# 
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the dem directory..."
+cd $procdir/INSAR_$reference
+mkdir -p dem
+cd dem
+cp $procdir/multi_looking/EQA.$reference.dem_par ./
+cp $procdir/multi_looking/EQA.$reference.dem ./
+mv EQA.$reference.dem_par EQA.${reference}_seg.par
+
+echo " "
+echo "dem folder gets ready. "
+echo " "
+
+
+
+#+++++++++++++++++++++++++++++++++ $reference folder +++++++++++++++++++++++++++++++++++++++++#
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the reference directory..."
+cd $procdir/INSAR_$reference
+mkdir -p $reference
+cd $reference
+
+cp  $procdir/INSAR_$reference/rslc/$reference.rslc ./
+cp  $procdir/INSAR_$reference/rslc/$reference.rslc.par ./
+
+echo " "
+echo "Reference folder gets ready. "
+echo " "
+
+
+#++++++++++++++++++++++++++++++++++++++ About GACOS +++++++++++++++++++++++++++++++++++++++++++#
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "Now working with the APS directory..."
+# output kml and date list
+if [ "$gacos_flag" == "0" ]; then
+    echo " "
+    echo "GACOS directory (APS) is not prepared."
+    echo "Another mothod for atmospheric correction should be considered."
+    echo " "
+else
+    cd $procdir/INSAR_$reference
+    mkdir -p APS
+    # preparation of kml file
+    cd $procdir/multi_looking
+    mk_kml EQA.$reference.dem_par EQA.$reference.mli.bmp EQA.$reference.dem.kml
+    mv ./EQA.$reference.dem.kml $procdir/INSAR_$reference/APS
+    
+    # preparation of date list
+    cd $procdir
+    #cd $procdir/INSAR_$reference/APS
+    echo "sh_grep_S1_dates $path $grep_start $grep_stop $miss_type"
+    sh_grep_S1_dates $path $grep_start $grep_stop $miss_type
+    mv grep_dates_s1* $procdir/INSAR_$reference/APS
+    echo " "
+    echo "APS folder gets ready. "
+    echo " "
+fi
+
+    
+

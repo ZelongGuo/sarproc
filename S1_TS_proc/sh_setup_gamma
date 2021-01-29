@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# This is a setup table for S1_TS_proc
+
+version="30/12/2020"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -eq "0"  ]; then
+	cat<<END && exit 1 
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Set up tables for Sentinel-1 Time-series processing with GAMMA.
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	29/12/2020
+  Last edited:		$version
+
+  usage:		$(basename $0) <type>
+  
+  <type>: (input) type of the SAR data processing: 2p or ts
+  	          2p: 2-pass differential interferometric processing;
+              ts: time series processing;
+
+  Description: $(basename $0) is employed for generating the pre-setting files used for Sentinel-1
+	       data processing, including the configure table and the read.me file.
+
+  Note:     This script will generate the files under current directory, please make sure current
+            directory is your project/processing directory (procdir).
+
+            CURRENT DIR: $PWD
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+
+var1=$(echo "$1" | tr 'A-Z' 'a-z')
+
+printf "\n  Now the project/processing directory is: $PWD" 
+#printf "\nNow the project/processing directory is\n" $cwd
+#echo " "
+#echo "Now the project/processing directory is"
+#pwd
+
+case $var1 in
+	"2p" | "2-p" | "2pass" | "2-pass")
+		printf "\n  Sorry, now 2-pass differential interferometric processing is not supported."
+        printf "\n"
+        ;;
+	"ts" | "timeseries" | "time-series")
+		mkdir -p table
+        cd table
+        [ -e "S1.cfg" ] && rm S1.cfg 
+        cp $S1_TS_PROC_HOME/S1.cfg ./
+        [ -e "READ.ME" ] && rm READ.ME
+        cp $S1_TS_PROC_HOME/READ.ME ./
+        echo " "
+        echo "  The configure file has gotten ready. "
+        echo " "
+		;;
+    *)
+    	printf "\n  Please re-input the type of processing: 2p or ts" && echo " " && exit 1
+    	;;
+esac
+
+

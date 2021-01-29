@@ -1,0 +1,205 @@
+#!/bin/bash
+
+# this script is used for unwrapping (including filtering) after the Differential Interferometry
+# run at the project directory
+# Zelong Guo @GFZ, Potsdam
+# First Version: 14.01.2021
+
+#reference=20171107
+#slave=20171119
+#width=$(grep 'range_samples:' $reference.rmli.par | awk '{print $2}')
+
+reference=$1
+slave=$2
+unwarp_model=$3
+filter=$4
+# the location of EQ as reference point
+#lat=
+#lon=
+
+procdir=$(echo "$PWD")
+
+#width=$(cat $procdir/subset/$reference.rmli.par | grep 'range_samples:' | awk '{print $2}')
+width=$(cat $procdir/subset/${reference}_${slave}.off | grep 'interferogram_width:' | awk '{print $2}')
+nlines=$(cat $procdir/subset/${reference}_${slave}.off | grep 'interferogram_azimuth_lines:' | awk '{print $2}')
+waveleg=$(cat $procdir/coreg/$reference.rslc.par | grep 'radar_frequency:' | awk '{print $2}' | awk '{printf "%.1f", 300000000/$1*100}')
+half_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1/2}')
+double_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1*2}')
+quadr_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1*4}')
+
+mkdir -p unw
+cd unw
+
+ln -s $procdir/subset/${reference}_${slave}.diff ./
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ filering with adf +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+if [ "$filter" == 1 ]; then
+	adf ${reference}_${slave}.diff tmp ${reference}_${slave}.diff2.cc $width 0.2 128 7 16 0 0 0.25;
+	adf tmp tmp1 ${reference}_${slave}.diff2.cc $width 0.3 64 7 8 0 0 0.25;
+	adf tmp1 ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc $width 0.4 32 7 4 0 0 0.25;
+	rasmph_pwr24 ${reference}_${slave}.diff2.flt $procdir/coreg/$reference.rmli $width - - - 1 1 1. .35 1 ${reference}_${slave}.diff2.flt.bmp
+fi
+
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Unwrapping ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+#++++++++++ unwrapping with mcf ++++++++++#
+
+if [ ${unwarp_model} == 1 ]; then
+
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+        echo "Phase unwrapping using mcf method ......"
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+	if [ ! -d mcf ]; then
+           mkdir mcf
+	fi
+        cd mcf
+
+        #reference point coordinates (image center)
+        #@ npd2 = $np / 3
+        #@ nld2 = $nl / 3
+        npd2=864
+        nld2=2520
+        pr=1
+        paz=1
+        pov=600
+ 
+        #generation of phase unwrapping validity mask
+        echo "rascc_mask ../${reference}_${slave}.diff2.cc $procdir/coreg/${reference}.rmil $width 1 1 0 1 1 0 0 0.1 0.9 1.0 0.35 1 ${reference}_${slave}.cc.mask.ras"
+        #rascc_mask $INTDIR/$mas_slv.smcc $INTDIR/$mas_slv.pwr1 $np 1 1 0 1 1 0 0 0.1 0.9 1.0 0.35 1 $mas_slv.smcc.mask.ras
+        rascc_mask ../${reference}_${slave}.diff2.cc $procdir/coreg/${reference}.rmli $width 1 1 0 1 1 0 0 0.1 0.9 1.0 0.35 1 ${reference}_${slave}.cc.mask.ras
+
+        #adaptive sampling reduction for phase unwrapping validity mask
+        rascc_mask_thinning ${reference}_${slave}.cc.mask.ras ../${reference}_${slave}.diff2.cc $width ${reference}_${slave}.cc.mask_thinned.ras 5 0.3 0.4 0.5 0.6 0.6 
+
+
+        #phase unwrapping using mcf and triangulation
+	mcf ../${reference}_${slave}.diff2.flt ../${reference}_${slave}.diff2.cc ${reference}_${slave}.cc.mask_thinned.ras ${reference}_${slave}.diff2.flt.unw $width 1 0 0 - - 1 1 600 - - 0
+        #weighted interpolation of gaps in unwrapped phase data using adaptive window size
+        echo "interp_ad ${reference}_${slave}.unw_thinned ${reference}_${slave}.unw_interp $width 32 8 16 2"
+        interp_ad ${reference}_${slave}.diff2.flt.unw ${reference}_${slave}.unw_interp $width 32 8 16 2 
+ 
+        #phase unwrapping using model of unwrapped phase
+           echo "unw_model $INTDIR/${reference}_${slave}.tflt_sm ${reference}_${slave}.unw_interp ${reference}_${slave}.unw $width $npd2 $nld2 0"
+           unw_model ../${reference}_${slave}.diff2.flt ${reference}_${slave}.unw_interp ${reference}_${slave}.unw $width $npd2  $nld2 0
+     
+     #geocode unwrapped image
+     #utm image width
+     #utmw=`grep width: $SIMDIR/${mas_slv}.utm.dem.par | awk '{print $2}'`
+     utmw=`cat $procdir/multi_looking/EQA.$reference.dem_par | grep "width" | awk '{print $2}'`
+     #utml=`grep nlines: $SIMDIR/${mas_slv}.utm.dem.par | awk '{print $2}'`
+     echo "geocode_back ${reference}_${slave}.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${reference}_${slave}.unw_utm $utmw 0 0 0 "
+     geocode_back ${reference}_${slave}.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${reference}_${slave}.unw_utm $utmw 0 0 0 
+        
+	#raster geocoded unwrapped image
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - -  1.0 1.0 0.35 0 1 ${reference}_${slave}.unw_utm.bmp
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - - 1.0 1.0 0.35 0 1 ${reference}_${slave}.unw_utm.ras 
+
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - -  .5 1.0 0.35 0 1 ${reference}_${slave}_${waveleg}cm.unw_utm.bmp
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - -  .25 1.0 0.35 0 1 ${reference}_${slave}_${double_waveleg}cm.unw_utm.bmp
+
+elif [ ${unwarp_model} == 2 ]; then
+
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+        echo "Phase unwrapping using branch cut method ......"
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+	if [ ! -d tree ]; then
+       		 mkdir tree
+	fi
+      cd tree
+
+      #reference point coordinates (image center)
+      #@ npd2 = $np / 3
+      #@ nld2 = $nl / 3
+      npd2=3121
+      nld2=2294
+      pr=2
+      paz=5
+      pov=600
+ 
+      #if(-e $INTDIR/$mas_slv.tflt_sm_rmp) then
+      #  echo "UNWRAP_PAR $INTDIR/$mas_slv.off $INTDIR/$mas_slv.tflt_sm_rmp $INTDIR/$mas_slv.smcc $INTDIR/$mas_slv.pwr1 $mas_slv.unw $mas_slv.flag 0.3 6 $npd2 $nld2"
+      #  UNWRAP_PAR $INTDIR/$mas_slv.off $INTDIR/$mas_slv.tflt_sm_rmp $INTDIR/$mas_slv.smcc $INTDIR/$mas_slv.pwr1 $mas_slv.unw $mas_slv.flag 0.3 6 $npd2 $nld2
+      #else
+      #  echo "UNWRAP_PAR $INTDIR/$mas_slv.off $INTDIR/$mas_slv.tflt_sm $INTDIR/$mas_slv.smcc $INTDIR/$mas_slv.pwr1 $mas_slv.unw $mas_slv.flag 0.7 6 $npd2 $nld2"
+        UNWRAP_PAR $procdir/subset/${reference}_${slave}.off ../${reference}_${slave}.diff2.flt ../${reference}_${slave}.diff2.cc $procdir/coreg/${reference}.rmli ${reference}_${slave}.unw ${reference}_${slave}.flag 0.7 6 $npd2 $nld2
+        #echo $EMP
+      #endif
+   
+     #geocode unwrapped image
+     #utm image width
+     #utmw=`grep width: $SIMDIR/${mas_slv}.utm.dem.par | awk '{print $2}'`
+     utmw=`cat $procdir/multi_looking/EQA.$reference.dem_par | grep "width" | awk '{print $2}'`
+     #utml=`grep nlines: $SIMDIR/${mas_slv}.utm.dem.par | awk '{print $2}'`
+     echo "geocode_back ${reference}_${slave}.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${reference}_${slave}.unw_utm $utmw 0 0 0 "
+     geocode_back ${reference}_${slave}.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${reference}_${slave}.unw_utm $utmw 0 0 0 
+        
+	#raster geocoded unwrapped image
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - -  1.0 1.0 0.35 0 1 ${reference}_${slave}.unw_utm.bmp
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - - 1.0 1.0 0.35 0 1 ${reference}_${slave}.unw_utm.ras 
+
+     rasrmg ${reference}_${slave}.unw_utm $procdir/multi_looking/EQA.${reference}.mli $utmw 1 1 0 - -  .5 1.0 0.35 0 1 ${reference}_${slave}_${waveleg}cm.unw_utm.bmp
+
+
+elif [ ${unwarp_model} == 3 ]; then
+
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+        echo "Phase unwrapping using snaphu ......"
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+	if [ ! -d snaphu ]; then
+       		 mkdir snaphu
+	fi
+      cd snaphu
+
+      :<<comment
+	echo "snaphu4gamma.csh $PRJDIR ${mas} $slv"
+     #copy snaphu4gamma.csh to snaphu directory firstly!!!!!!!!!!!!!!!!!!!!!!!!!!
+     # the script need to be modified.
+     snaphu4gamma.sh $PRJDIR ${reference} $slave
+
+     echo "rasrmg ${mas_slv}_msk.unw $INTDIR/$mas_slv.pwr1 $np 1 1 0 1 1 .333"
+     rasrmg ${mas_slv}_msk.unw $INTDIR/$mas_slv.pwr1 $np 1 1 0 1 1 .333 >> $unwLog
+     echo $EMP
+
+     #geocode unwrapped image
+     #utm image width
+     set utmw = `grep width: $SIMDIR/${mas_slv}.utm.dem.par | awk '{print $2}'`
+     set utml = `grep nlines: $SIMDIR/${mas_slv}.utm.dem.par | awk '{print $2}'`
+     if(-e ${mas_slv}.unw) then
+        echo "geocode_back ${mas_slv}_msk.unw $np $SIMDIR/${mas_slv}.utm_to_rdc_fine ${mas_slv}.unw_utm $utmw 0 0 0 "
+        geocode_back ${mas_slv}_msk.unw $np $SIMDIR/${mas_slv}.utm_to_rdc_fine ${mas_slv}.unw_utm $utmw 0 0 0 >> $unwLog
+        echo $EMP
+        #raster geocoded unwrapped image
+      rasrmg $mas_slv.unw_utm $INTDIR/$mas_slv.pwr1_utm $utmw 1 1 0 $rasrlks $rasazlks 1.0 1.0 0.35 0 1 $mas_slv.unw_utm.bmp $INTDIR/$mas_slv.smcc_utm 1 0.25 >> $unwLog
+     endif
+   endif
+comment
+
+
+
+fi
+
+
+
+
+:<<dd
+# change it please
+#mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc - ${reference}_${slave}.diff2.flt.unw $width 1 0 0 - - 1 1 600 - - 0
+#mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc - ${reference}_${slave}.diff2.flt.unw $width - - - - - - - - 5100 2900 
+mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc - ${reference}_${slave}.diff2.flt.unw $width - - - - - - - - 270 208
+dw=`cat $procdir/multi_looking/EQA.$reference.dem_par | grep "width" | awk '{print $2}'`
+geocode_back ${reference}_${slave}.diff2.flt.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${reference}_${slave}.diff2.flt.unw.geo $dw - - 0 
+
+rasrmg ${reference}_${slave}.diff2.flt.unw.geo - $dw  - - - - - 1 - - - - ${reference}_${slave}.diff2.flt.unw.${half_waveleg}cm.png
+rasrmg ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - 1 - - - - ${reference}_${slave}.diff2.flt.unw.${half_waveleg}cm.bmp
+#convert -transparent black ${reference}_${slave}.diff2.flt.unw.geo.bmp ${reference}_${slave}.diff2.flt.unw.geo.png
+#mk_kml ../EQA.dem_par ${reference}_${slave}.diff2.flt.unw.geo.png ${reference}_${slave}.diff2.flt.unw.geo.kml
+
+rasrmg ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - .5 - - - - ${reference}_${slave}.diff2.flt.unw.${waveleg}cm.bmp
+rasrmg ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - .25 - - - - ${reference}_${slave}.diff2.flt.unw.${double_waveleg}cm.bmp
+rasrmg ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - .125 - - - - ${reference}_${slave}.diff2.flt.unw.${quadr_waveleg}cm.bmp
+
+cd $procdir
+dd

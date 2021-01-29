@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# images coregistration
+# This script will generate relevant files at coreg directory
+# if mission typr = BOTH, i.e. both of s1a and s1b data will be empoyed in the processing, then setting should be m1_fswa=m2_fswa, m1_lswa=m2_lswa
+# Zelong Guo @GFZ
+# zelong@gfz-potsdam.de
+# First Version: 15/12/2020
+
+
+prodcir=$1
+miss_type=$2
+reference=$3
+m1_fswa=$4
+m1_lswa=$5
+ran_look=$6
+azi_look=$7
+
+miss_type=$(echo $miss_type | tr 'A-Z' 'a-z') 
+
+echo "sh_coreg.log" 
+printf "Now the executing directory is %s\n" $PWD
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++ reading the sensing data and writing it into a array ++++++++++++++++++++++++++++++++++++++++++++++++++#
+if [ "$miss_type" == "s1a" ]; then
+	sensing_date_read=$(cat grep_dates_s1a | awk '{print $0}')
+	index=0
+	for sensing_date_read_index in $sensing_date_read
+	do
+		sensing_date[$index]=$sensing_date_read_index
+		let index+=1
+	done
+	echo "Sensing_date (s1a):"
+	echo "${sensing_date[*]}"
+elif [ "$miss_type" == "s1b" ]; then
+	sensing_date_read=$(cat grep_dates_s1b | awk '{print $0}')
+	index=0
+	for sensing_date_read_index in $sensing_date_read
+	do
+		sensing_date[$index]=$sensing_date_read_index
+		let index+=1
+	done
+	echo "Sensing_date (s1b):"
+	echo "${sensing_date[*]}"
+else
+	[ -e "grep_dates" ] && rm grep_dates && touch grep_dates
+	cat grep_dates_s1a >> grep_dates 
+	cat grep_dates_s1b >> grep_dates
+		
+	sensing_date_read=$(cat grep_dates | awk '{print $0}')
+	index=0
+	for sensing_date_read_index in $sensing_date_read
+	do
+		sensing_date[$index]=$sensing_date_read_index
+		let index+=1
+	done
+	echo "Sensing_date (s1a+s1b):"
+	echo "${sensing_date[*]}"
+	rm grep_dates
+fi	
+# Reading the sensing data and writing to an array are finished.
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+cd $procdir
+mkdir -p  coreg
+cd coreg
+for ((i=0;i<${#sensing_date[*]};i++))
+do	
+	k=${sensing_date[i]}
+	[ -e "SLC_tab0" ] && rm SLC_tab0 && touch SLC_tab0
+	[ -e "SLC_tab1" ] && rm SLC_tab1 && touch SLC_tab1
+	[ -e "SLC_tab2" ] && rm SLC_tab2 && touch SLC_tab2
+	if [ "$m1_fswa" == "$m1_lswa" ]; then
+		echo "$datadir/$reference.iw$m1_fswa.sel.slc $datadir/$reference.iw$m1_fswa.sel.slc.par $datadir/$reference.iw$m1_fswa.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$k.iw$m1_fswa.sel.slc $datadir/$k.iw$m1_fswa.sel.slc.par $datadir/$k.iw$m1_fswa.sel.slc.TOPS_par" >> SLC_tab1
+		echo "./$k.iw$m1_fswa.rslc ./$k.iw$m1_fswa.rslc.par ./$k.iw$m1_fswa.rslc.TOPS_par" >> SLC_tab2
+	elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "2" ]; then
+		echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$k.iw1.sel.slc $datadir/$k.iw1.sel.slc.par $datadir/$k.iw1.sel.slc.TOPS_par" >> SLC_tab1
+		echo "$datadir/$k.iw2.sel.slc $datadir/$k.iw2.sel.slc.par $datadir/$k.iw2.sel.slc.TOPS_par" >> SLC_tab1
+		echo "./$k.iw1.rslc ./$k.iw1.rslc.par ./$k.iw1.rslc.TOPS_par" >> SLC_tab2
+		echo "./$k.iw2.rslc ./$k.iw2.rslc.par ./$k.iw2.rslc.TOPS_par" >> SLC_tab2
+	elif [ "$m1_fswa" == "1" ] && [ "$m1_lswa" == "3" ]; then
+		echo "$datadir/$reference.iw1.sel.slc $datadir/$reference.iw1.sel.slc.par $datadir/$reference.iw1.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$k.iw1.sel.slc $datadir/$k.iw1.sel.slc.par $datadir/$k.iw1.sel.slc.TOPS_par" >> SLC_tab1
+		echo "$datadir/$k.iw2.sel.slc $datadir/$k.iw2.sel.slc.par $datadir/$k.iw2.sel.slc.TOPS_par" >> SLC_tab1
+		echo "$datadir/$k.iw3.sel.slc $datadir/$k.iw3.sel.slc.par $datadir/$k.iw3.sel.slc.TOPS_par" >> SLC_tab1
+		echo "./$k.iw1.rslc ./$k.iw1.rslc.par ./$k.iw1.rslc.TOPS_par" >> SLC_tab2
+		echo "./$k.iw2.rslc ./$k.iw2.rslc.par ./$k.iw2.rslc.TOPS_par" >> SLC_tab2
+		echo "./$k.iw3.rslc ./$k.iw3.rslc.par ./$k.iw3.rslc.TOPS_par" >> SLC_tab2
+		elif [ "$m1_fswa" == "2" ] && [ "$m1_lswa" == "3" ]; then
+		echo "$datadir/$reference.iw2.sel.slc $datadir/$reference.iw2.sel.slc.par $datadir/$reference.iw2.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$reference.iw3.sel.slc $datadir/$reference.iw3.sel.slc.par $datadir/$reference.iw3.sel.slc.TOPS_par" >> SLC_tab0
+		echo "$datadir/$k.iw2.sel.slc $datadir/$k.iw2.sel.slc.par $datadir/$k.iw2.sel.slc.TOPS_par" >> SLC_tab1
+		echo "$datadir/$k.iw3.sel.slc $datadir/$k.iw3.sel.slc.par $datadir/$k.iw3.sel.slc.TOPS_par" >> SLC_tab1
+		echo "./$k.iw2.rslc ./$k.iw2.rslc.par ./$k.iw2.rslc.TOPS_par" >> SLC_tab2
+		echo "./$k.iw3.rslc ./$k.iw3.rslc.par ./$k.iw3.rslc.TOPS_par" >> SLC_tab2
+	else
+		echo "$0: ERROR with settings of swathes! Please check it!" && echo "" && exit 1
+	fi			
+#	#++++++ now make coregistration ++++++#
+	ScanSAR_coreg.py SLC_tab0 $reference SLC_tab1 $k SLC_tab2 ../multi_looking/$reference.hgt.SRTM $ran_look $azi_look 
+
+done
+
+#	ScanSAR_coreg.py SLC_tab0 $reference SLC_tab1 $k SLC_tab2 ../multi_looking/$reference.hgt.SRTM $ran_look $azi_look 
+
+cd $procdir
+echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+date "+%Y-%m-%d %H:%M:%S"
+printf "\n\n\n"
