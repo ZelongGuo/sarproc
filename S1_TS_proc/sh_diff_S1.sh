@@ -6,6 +6,7 @@
 # Zelong Guo @GFZ
 # zelong@gfz-potsdam.de
 # First Version: 15/12/2020
+# Version: 07.02.2021
 
 :<<comment
 miss_type=
@@ -112,12 +113,21 @@ awk -v ran_look=$ran_look -v azi_look=$azi_look -v srtm=$srtm -v width=$width '{
 
 #++++++ calculate differential interferograms ++++++#
 run_all batching_file 'create_offset $2.rslc.par $3.rslc.par $2_$3.off 1 $4 $5 0'
-
-
 run_all batching_file 'phase_sim_orb $2.rslc.par $3.rslc.par $2_$3.off $6 $2_$3.sim_unw $2.rslc.par - - 1 1'
 #run_all batching_file 'rasrmg $2_$3.sim.unw $2.rmli $7'
 run_all batching_file 'SLC_diff_intf $2.rslc $3.rslc $2.rslc.par $3.rslc.par $2_$3.off $2_$3.sim_unw $2_$3.diff $4 $5 1 1 0.2'
 run_all batching_file 'rasmph_pwr24 $2_$3.diff $2.rmli $7 - - - 1 1 1. .35 1 $2_$3.diff.bmp'
+
+#+++++ generate coherence files +++++#
+for i in `ls -1 | grep '.diff$'`
+do
+	master=$(echo "$i" | sed 's/_/ /g' | awk '{print $1}')
+	slave=$(echo "$i" | sed 's/_/ /g' | sed 's/\./ /g' | awk '{print $2}')
+	echo "cc_wave $i $master.rmli $slave.rmli ${master}_${slave}.cc $width $ran_look $azi_look 2 "
+	cc_wave $i $master.rmli $slave.rmli ${master}_${slave}.cc $width $ran_look $azi_look 2
+	echo "rascc ${master}_${slave}.cc $master.rmli $width"
+	rascc ${master}_${slave}.cc $master.rmli $width
+done
 ### for StaMPS end here
 
 # filtering
