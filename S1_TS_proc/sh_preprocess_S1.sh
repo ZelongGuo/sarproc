@@ -15,7 +15,7 @@
 #   1. sh_gamma.sh
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-echo "sh_prechecking.log"
+echo "sh_preprocess_S1.log"
 printf "Now the executing directory is %s\n" $PWD
 
 miss_type=$(echo "$miss_type" | tr 'A-Z' 'a-z')

@@ -100,76 +100,76 @@ bperp_max=$(echo $bperp_max)
 delta_T_min=$(echo $delta_T_min)
 delta_T_max=$(echo $delta_T_max)
 
-:<<ZL
-#++++++++ checking and deleting '/' to the postfix of the directories +++++++++#
-postfix_path=$(echo "${procdir: -1}")
-[ "$postfix_path" == "/" ] && procdir=${procdir%/*}
-postfix_path=$(echo "${datadir: -1}")
-[ "$postfix_path" == "/" ] && datadir=${datadir%/*}
-postfix_path=$(echo "${opoddir: -1}")
-[ "$postfix_path" == "/" ] && opoddir=${opoddir%/*}
-postfix_path=$(echo "${demdir: -1}")
-[ "$postfix_path" == "/" ] && demdir=${demdir%/*}
-
-#++++++++ replacing "$procdir" in opoddir and demdir with absolute path ++++++++#
-# NOTE: "" should be used in sed if you want importing variables
-#opoddir=$(echo $opoddir | sed "s/\$procdir/$PWD/g") # This can't work.
-#demdir=$(echo $demdir | sed "s/\$procdir/$PWD/g") # This can't work.
-# NOTE: eval represent excecuting twice
-opoddir=$(eval echo $opoddir)
-demdir=$(eval echo $demdir)
-
-# datadir will be created in sh_prechecking.sh
-datadir=$procdir/data
-ZL
-
-:<<comment
-[ -e "vari.table" ] && rm vari.table && touch vari.table
-#echo "procdir=$procdir" >> vari.table
+#:<<ZL
+##++++++++ checking and deleting '/' to the postfix of the directories +++++++++#
+#postfix_path=$(echo "${procdir: -1}")
+#[ "$postfix_path" == "/" ] && procdir=${procdir%/*}
+#postfix_path=$(echo "${datadir: -1}")
+#[ "$postfix_path" == "/" ] && datadir=${datadir%/*}
+#postfix_path=$(echo "${opoddir: -1}")
+#[ "$postfix_path" == "/" ] && opoddir=${opoddir%/*}
+#postfix_path=$(echo "${demdir: -1}")
+#[ "$postfix_path" == "/" ] && demdir=${demdir%/*}
+#
+##++++++++ replacing "$procdir" in opoddir and demdir with absolute path ++++++++#
+## NOTE: "" should be used in sed if you want importing variables
+##opoddir=$(echo $opoddir | sed "s/\$procdir/$PWD/g") # This can't work.
+##demdir=$(echo $demdir | sed "s/\$procdir/$PWD/g") # This can't work.
+## NOTE: eval represent excecuting twice
+#opoddir=$(eval echo $opoddir)
+#demdir=$(eval echo $demdir)
+#
+## datadir will be created in sh_prechecking.sh
+#datadir=$procdir/data
+#ZL
+#
+#:<<comment
+#[ -e "vari.table" ] && rm vari.table && touch vari.table
+##echo "procdir=$procdir" >> vari.table
+##echo "datadir=$datadir" >> vari.table
+##echo "unzip_SAR_flag=$unzip_SAR_flag" >> vari.table
+#echo "opod_download_flag=$opod_download_flag"  >> vari.table
+#echo "miss_type=$miss_type" >> vari.table
+##echo "opoddir=$opoddir" >> vari.table
+#echo "dem_download_flag=$dem_download_flag" >> vari.table
+#echo "dem_type=$dem_type" >> vari.table
+#echo "max_lat=$max_lat" >> vari.table
+#echo "min_lat=$min_lat" >> vari.table
+#echo "max_lon=$max_lon" >> vari.table
+#echo "min_lon=$min_lon" >> vari.table
+#echo "disdem_flag=$disdem_flag" >> vari.table
+##echo "demdir=$demdir" >> vari.table
 #echo "datadir=$datadir" >> vari.table
-#echo "unzip_SAR_flag=$unzip_SAR_flag" >> vari.table
-echo "opod_download_flag=$opod_download_flag"  >> vari.table
-echo "miss_type=$miss_type" >> vari.table
-#echo "opoddir=$opoddir" >> vari.table
-echo "dem_download_flag=$dem_download_flag" >> vari.table
-echo "dem_type=$dem_type" >> vari.table
-echo "max_lat=$max_lat" >> vari.table
-echo "min_lat=$min_lat" >> vari.table
-echo "max_lon=$max_lon" >> vari.table
-echo "min_lon=$min_lon" >> vari.table
-echo "disdem_flag=$disdem_flag" >> vari.table
-#echo "demdir=$demdir" >> vari.table
-echo "datadir=$datadir" >> vari.table
-echo "start_date=$start_date" >> vari.table
-echo "stop_date=$stop_date" >> vari.table
-echo "pol=$pol" >> vari.table
-echo "m1_fswa=$m1_fswa" >> vari.table
-echo "m1_lswa=$m1_lswa" >> vari.table
-echo "m1_fbur=$m1_fbur" >> vari.table
-echo "m1_lbur=$m1_lbur" >> vari.table
-echo "m2_fswa=$m2_fswa" >> vari.table
-echo "m2_lswa=$m2_lswa" >> vari.table
-echo "m2_fbur=$m2_fbur" >> vari.table
-echo "m2_lbur=$m2_lbur" >> vari.table
-echo "disslc=$disslc" >> vari.table
-echo "dissel=$dissel" >> vari.table
-echo "reference=$reference" >> vari.table
-echo "ran_look=$ran_look" >> vari.table
-echo "azi_look-$azi_look" >> vari.table
-echo "dem_northover=$dem_northover" >> vari.table
-echo "dem_eastover=$dem_eastover" >> vari.table
-echo "cp_sub=$cp_sub" >> vari.table
-echo "roff=$roff" >> vari.table
-echo "nr=$nr" >> vari.table
-echo "loff=$loff" >> vari.table
-echo "nl=$nl" >> vari.table
-echo "itab_type=$itab_type" >> vari.table
-echo "bperp_min=$bperp_min" >> vari.table
-echo "bperp_max=$bperp_max" >> vari.table
-echo "delta_T_min=$delta_T_min" >> vari.table
-echo "delta_T_max=$delta_T_max" >> vari.table
-comment
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ reading table finished ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
-
-
-
+#echo "start_date=$start_date" >> vari.table
+#echo "stop_date=$stop_date" >> vari.table
+#echo "pol=$pol" >> vari.table
+#echo "m1_fswa=$m1_fswa" >> vari.table
+#echo "m1_lswa=$m1_lswa" >> vari.table
+#echo "m1_fbur=$m1_fbur" >> vari.table
+#echo "m1_lbur=$m1_lbur" >> vari.table
+#echo "m2_fswa=$m2_fswa" >> vari.table
+#echo "m2_lswa=$m2_lswa" >> vari.table
+#echo "m2_fbur=$m2_fbur" >> vari.table
+#echo "m2_lbur=$m2_lbur" >> vari.table
+#echo "disslc=$disslc" >> vari.table
+#echo "dissel=$dissel" >> vari.table
+#echo "reference=$reference" >> vari.table
+#echo "ran_look=$ran_look" >> vari.table
+#echo "azi_look-$azi_look" >> vari.table
+#echo "dem_northover=$dem_northover" >> vari.table
+#echo "dem_eastover=$dem_eastover" >> vari.table
+#echo "cp_sub=$cp_sub" >> vari.table
+#echo "roff=$roff" >> vari.table
+#echo "nr=$nr" >> vari.table
+#echo "loff=$loff" >> vari.table
+#echo "nl=$nl" >> vari.table
+#echo "itab_type=$itab_type" >> vari.table
+#echo "bperp_min=$bperp_min" >> vari.table
+#echo "bperp_max=$bperp_max" >> vari.table
+#echo "delta_T_min=$delta_T_min" >> vari.table
+#echo "delta_T_max=$delta_T_max" >> vari.table
+#comment
+##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ reading table finished ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+#
+#
+#
