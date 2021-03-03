@@ -120,7 +120,7 @@ if [ "$dem_download_flag" == "Y" ] || [ "$dem_download_flag" == "YES" ] || [ "$d
 	echo "sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type n"
 	sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type n
 	
-	cd $procdir
+	cd $procdir/multi_looking
 fi
 #------------------------------------------------------------------#
 
