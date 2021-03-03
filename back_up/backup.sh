@@ -2,10 +2,10 @@
  
  cd /     
  
-         path="/home/zelong/Desktop/my_shell_scripts/original/back_up"  
+         path="/home/zelong/Desktop/my_scripts/back_up"  
   #备份到对应目录下
  
-        way="/home/zelong/Desktop/my_shell_scripts/original/S1_TS_proc"    
+        way="/home/zelong/Desktop/my_scripts/S1_TS_proc"    
   #需要备份的路径
  
  

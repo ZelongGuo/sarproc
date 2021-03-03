@@ -1,0 +1,138 @@
+#!/bin/bash
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/ymwen/Soft/glibc-2.14/lib
+#export OLD_LIBRARY_PATH=$LD_LIBRARY_PATH
+
+if [ $# -lt 1 ]; then
+  echo S1A_PROC_Master master fswath lswath fstep lstep 
+  exit
+fi
+
+export master=$1
+
+if [ $# -lt 2 ]; then
+  export fswath=1
+else
+  export fswath=$2
+fi
+
+if [ $# -lt 3 ]; then
+  export lswath=3
+else
+  export lswath=$3
+fi
+
+if [ $# -lt 4 ]; then
+  export fstep=1
+else
+  export fstep=$4
+fi
+
+if [ $# -lt 5 ]; then
+  export lstep=11
+else
+  export lstep=$5
+fi
+
+rm -rf FSLC_tab_${master}
+
+#if [ $fswath -eq 1 ]; then
+#  i=0
+#  for mdate in $(ls S*_IW_SLC__1S*V_2*${master}* -d | cut -c18-32)
+#  do
+#    let i=i+1
+#    par_S1_SLC *${mdate}*/*/s1*-iw1-slc-vv-*.tiff *${mdate}*/*/s1*-iw1-slc-vv-*.xml *${mdate}*/*/*/calibration-s1*-iw1-slc-vv-*.xml *${mdate}*/*/*/noise-s1*-iw1-slc-vv-*.xml ${mdate}.IW1.slc.par ${mdate}.IW1.slc ${mdate}.IW1.slc.TOPS_par
+#    echo ${mdate}.IW1.slc ${mdate}.IW1.slc.par ${mdate}.IW1.slc.TOPS_par >> FSLC_tab_${master}_$i
+#  done
+#  
+#  cp FSLC_tab_${master}_$i FSLC_tab_${master}
+#  sed -i s/${mdate}/${master}/g FSLC_tab_${master}
+#  if [ $i -gt 1 ]; then
+#    SLC_cat_S1_TOPS FSLC_tab_${master}_1 FSLC_tab_${master}_2 FSLC_tab_${master}
+#  fi
+#fi
+
+if [ $fswath -eq 1 ]; then
+  echo "par_S1_SLC */*/s1*-iw1-slc-vv-${master}*.tiff */*/s1*-iw1-slc-vv-${master}*.xml */*/*/calibration-s1*-iw1-slc-vv-${master}*.xml */*/*/noise-s1*-iw1-slc-vv-${master}*.xml ${master}.IW1.slc.par ${master}.IW1.slc ${master}.IW1.slc.TOPS_par 1"
+  par_S1_SLC */*/s1*-iw1-slc-vv-${master}*.tiff */*/s1*-iw1-slc-vv-${master}*.xml */*/*/calibration-s1*-iw1-slc-vv-${master}*.xml */*/*/noise-s1*-iw1-slc-vv-${master}*.xml ${master}.IW1.slc.par ${master}.IW1.slc ${master}.IW1.slc.TOPS_par 1 > log
+  echo ${master}.IW1.slc ${master}.IW1.slc.par ${master}.IW1.slc.TOPS_par > FSLC_tab_${master}
+fi
+
+if [ $lswath -gt 1 -a $fswath -ne 3 ]; then
+  echo "par_S1_SLC */*/s1*-iw2-slc-vv-${master}*.tiff */*/s1*-iw2-slc-vv-${master}*.xml */*/*/calibration-s1*-iw2-slc-vv-${master}*.xml */*/*/noise-s1*-iw2-slc-vv-${master}*.xml ${master}.IW2.slc.par ${master}.IW2.slc ${master}.IW2.slc.TOPS_par 1"
+  par_S1_SLC */*/s1*-iw2-slc-vv-${master}*.tiff */*/s1*-iw2-slc-vv-${master}*.xml */*/*/calibration-s1*-iw2-slc-vv-${master}*.xml */*/*/noise-s1*-iw2-slc-vv-${master}*.xml ${master}.IW2.slc.par ${master}.IW2.slc ${master}.IW2.slc.TOPS_par 1 >> log
+  echo ${master}.IW2.slc ${master}.IW2.slc.par ${master}.IW2.slc.TOPS_par >> FSLC_tab_${master}
+fi
+
+if [ $lswath -eq 3 ]; then
+  echo "par_S1_SLC */*/s1*-iw3-slc-vv-${master}*.tiff */*/s1*-iw3-slc-vv-${master}*.xml */*/*/calibration-s1*-iw3-slc-vv-${master}*.xml */*/*/noise-s1*-iw3-slc-vv-${master}*.xml ${master}.IW3.slc.par ${master}.IW3.slc ${master}.IW3.slc.TOPS_par 1"
+  par_S1_SLC */*/s1*-iw3-slc-vv-${master}*.tiff */*/s1*-iw3-slc-vv-${master}*.xml */*/*/calibration-s1*-iw3-slc-vv-${master}*.xml */*/*/noise-s1*-iw3-slc-vv-${master}*.xml ${master}.IW3.slc.par ${master}.IW3.slc ${master}.IW3.slc.TOPS_par 1 >> log
+  echo ${master}.IW3.slc ${master}.IW3.slc.par ${master}.IW3.slc.TOPS_par >> FSLC_tab_${master}
+fi
+
+###################################################################################
+#unset LD_LIBRARY_PATH
+#matlab -nosplash -nodesktop << END
+#date_calc(${master})
+#exit
+#END
+#export LD_LIBRARY_PATH=$OLD_LIBRARY_PATH
+#eday=`cat eday`
+#aday=`cat aday`
+#sensor=`ls */*/s1*-iw1-slc-vv-${master}*.tiff | cut -c3`
+#orbitfile=`ls /home/ymwen/ESASAR/Sentinel/S1${sensor}/POEORB/*${eday}*${aday}*`
+#eday=$(date -d "$master -1 days" "+%Y%m%d")
+#aday=$(date -d "$master +1 days" "+%Y%m%d")
+#orbitfile=`ls S1*${eday}*${aday}*`
+###################################################################################
+
+
+rm -f BURST_tab
+
+if [ $fswath -eq 1 ]; then
+  #if [ -n "$orbitfile" ]; then
+    echo "S1_OPOD_vec ${master}.IW1.slc.par $procdir/opod"
+    # S1_OPOD_vec ${master}.IW1.slc.par $orbitfile >> log
+    OPOD_vec ${master}.IW1.slc.par $procdir/opod - >> log
+  #fi
+  echo "${fstep} ${lstep}" > BURST_tab
+fi
+
+if [ $lswath -gt 1 -a $fswath -ne 3 ]; then
+  #if [ -n "$orbitfile" ]; then
+    echo "S1_OPOD_vec ${master}.IW2.slc.par $procdir/opod"
+    # S1_OPOD_vec ${master}.IW2.slc.par $orbitfile >> log
+    OPOD_vec ${master}.IW2.slc.par $procdir/opod - >> log
+  #fi
+  echo "${fstep} ${lstep}" >> BURST_tab
+fi
+
+if [ $lswath -eq 3 ]; then
+  #if [ -n "$orbitfile" ]; then
+    echo "S1_OPOD_vec ${master}.IW3.slc.par $procdir/opod"
+    # S1_OPOD_vec ${master}.IW3.slc.par $orbitfile >> log
+    OPOD_vec ${master}.IW3.slc.par $procdir/opod - >> log
+  #fi
+  echo "${fstep} ${lstep}" >> BURST_tab
+fi
+
+cp FSLC_tab_${master} SLC_tab_${master}
+
+if [ ${fstep} -ne 1 -o ${lstep} -ne 11 ]; then
+  sed -i s/${master}/${master}_crop/g SLC_tab_${master}
+  echo "SLC_copy_S1_TOPS FSLC_tab_${master} SLC_tab_${master} BURST_tab"
+  SLC_copy_ScanSAR FSLC_tab_${master} SLC_tab_${master} BURST_tab >> log
+fi
+
+echo "SLC_mosaic_S1_TOPS SLC_tab_${master} ${master}.slc ${master}.slc.par 10 2"
+SLC_mosaic_S1_TOPS SLC_tab_${master} ${master}.slc ${master}.slc.par 10 2 >> log
+
+echo "multi_look ${master}.slc ${master}.slc.par ${master}.mli ${master}.mli.par 10 2"
+multi_look ${master}.slc ${master}.slc.par ${master}.mli ${master}.mli.par 10 2 >> log
+
+mliw=`grep range_samples: ${master}.mli.par | awk '{print $2}'`
+
+echo "raspwr ${master}.mli $mliw 1 0 1 1"
+raspwr ${master}.mli $mliw 1 0 1 1 >> log
+
+#rm -rf eday aday log
+

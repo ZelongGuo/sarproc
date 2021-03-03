@@ -411,16 +411,12 @@ elif [ "$method" == "ccsbas" ]; then
 	mkdir -p INSAR_$reference
 	cd INSAR_$reference
 	
-	
-	mkdir -p SMALL_BASELINES
-	cd SMALL_BASELINES
-	
 	#+++++++++++++++++++++++++++++++++++++++++ rslc ++++++++++++++++++++++++++++++++++++++++++++++#
 	echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 	echo "Now working with the rslc directory..."
 	mkdir -p rslc
 	cd rslc
-	for line in `ls $procdir/subset | grep '.rmli$' | sed 's/.rmli/g'`
+	for line in `ls $procdir/subset | grep '.rmli$' | sed 's/.rmli//g'`
 	do
 		cp $procdir/subset/$line.rmli $line.mli
 	done
@@ -442,7 +438,9 @@ elif [ "$method" == "ccsbas" ]; then
 	echo "SLC folder gets ready. "
 	echo " "
 	
-	##++++++++++++++++++++++++++++++++++++++++++ diff and base and .cc  +++++++++++++++++++++++++++++++++++++#
+       ##++++++++++++++++++++++++++++++++++++++++++ diff and base and .cc  +++++++++++++++++++++++++++++++++++++#
+	cd $procdir/INSAR_$reference
+	mkdir -p SMALL_BASELINES
 	cd $procdir/INSAR_$reference/SMALL_BASELINES
 	echo "create YYYYMMDD folders..."
 	for line in `ls $procdir/subset/ | grep '.diff$' | sed 's/.diff//g'`
@@ -461,12 +459,7 @@ elif [ "$method" == "ccsbas" ]; then
 	        base_orbit $master.rslc.par $slave.rslc.par ${master}_${slave}.base
 	        rm $master.rslc.par $slave.rslc.par
 	
-	       # # copy resample rslc files
-	       # cp ../rslc/$master.rslc ./
-	       # cp ../rslc/$slave.rslc ./
-	       # cp ../rslc/$reference.rslc ./
-	       # cp ../rslc/$reference.rslc.par ./
-	       # cd ..
+	       cd ..
 	done
 
 	#+++++++++++++++++++++++++++++++++++++++ geo ++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -505,11 +498,27 @@ elif [ "$method" == "ccsbas" ]; then
 	mkdir -p $reference
 	cd $reference
 	
-	cp  $procdir/INSAR_$reference/SMALL_BASELINES/rslc/$reference.rslc.par ./
+	ln -s $procdir/coreg/$reference.rslc ./
+	ln -s $procdir/coreg/$reference.rslc.par ./
 	
+	# if interferograms have been multi-looked, then the rslc derived after coregistered in gamma should be subsampled
+	if [ "$ran_look" != "1" ] || [ "$azi_look" != "1" ]; then
+	
+	    ran_factor=`echo "$ran_look" | awk '{printf "%.20f", 1./$1}'`
+	    azi_factor=`echo "$azi_look" | awk '{printf "%.20f", 1./$1}'`
+	
+	    echo "sh_SLC_resample $reference.rslc $reference.rslc.par ${reference}_2.rslc ${reference}_2.rslc.par $ran_factor $azi_factor" 
+	    sh_SLC_resample $reference.rslc $reference.rslc.par ${reference}_2.rslc ${reference}_2.rslc.par $ran_factor $azi_factor 1>/dev/null
+	    rm $reference.rslc $reference.rslc.par ${reference}_2.rslc
+	   # mv ${reference}_2.rslc $reference.rslc
+	    mv ${reference}_2.rslc.par $reference.rslc.par
+
+	fi
+
 	echo " "
 	echo "Reference folder gets ready. "
 	echo " "
+	
 	
 	#rm -rf $procdir/INSAR_$reference/SMALL_BASELINES/rslc
 

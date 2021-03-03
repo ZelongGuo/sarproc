@@ -1,0 +1,149 @@
+#!/bin/bash
+# Under $procdir folder, data DIR should exist.
+version="02/03/2021"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "12"  ]; then
+	cat<<END && exit 1 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Batch processing script of SAR data.
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	12/12/2020
+  Last edited:		$version
+
+  usage:		$(basename $0) <MASTER> <SLAVE>
+                
+  <MASTER>:             (input) master date YYYYMMDD
+  <SLAVE>:              (input) slave date YYYYMMDD
+  <OPOD_FLAG>:          (input) if download opod (yes/y); otherwise no/n
+  <DEM_FLAG>:           (input) if download dem (yes/y); otherwise no/n
+  <MASTER_SWATH_BURST>:
+			(input) first swath
+			(input) last swath
+			(input) first burst
+			(input) last burst
+  <SLAVE_SWATH_BURST>:
+			(input) first swath
+			(input) last swath
+			(input) first burst
+			(input) last burst
+    
+            CURRENT DIR: $PWD
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+
+master=$1
+slave=$2
+opod_flag=$3
+dem_flag=$4
+
+m_fswa=$5
+m_lswa=$6
+m_fbur=$7
+m_lbur=$8
+s_fswa=$9
+s_lswa=${10}
+s_fbur=${11}
+s_lbur=${12}
+
+export procdir
+
+procdir=`echo $PWD`
+
+opod_flag=$(echo "$opod_flag" | tr 'A-Z' 'a-z')
+dem_flag=$(echo "$dem_flag" | tr 'A-Z' 'a-z')
+
+if [ "$opod_flag" == "yes" ] || [ "$opod_flag" == "y" ]; then
+    rm -rf grep_dates
+    ls $procdir/data -1 | grep '^S1' | awk -F '_' '{print $6}' | awk -F 'T' '{print $1}' > grep_dates
+    mkdir -p opod
+    cd opod
+    mission_type_flag=$(ls $procdir/data -1 | grep '^S1' | awk -F '_' '{print $1}' | sort | uniq | wc -l)
+    if [ "$mission_type_flag" == "1" ]; then
+            mission_type=$(ls $procdir/data -1 | grep '^S1' | awk -F '_' '{print $1}' | sort | uniq)
+            sh_get_S1_opod $mission_type ../grep_dates
+    elif [ "$mission_type_flag" == "2" ]; then
+            mission_type="both"
+            sh_get_S1_opod $mission_type ../grep_dates
+    else
+            echo "$0: error with the mission type, it should be s1a or s1b or both."
+    fi
+    cd $procdir
+   # rm -rf grep_dates
+fi
+
+
+mkdir -p ${master}
+cd ${master}
+master_SLC=`ls $procdir/data/ | grep '^S1' | grep "${master}"` 
+echo $master_SLC
+ln -s $procdir/data/${master_SLC} ./
+file_zip=$(ls -1 S1?_IW_SLC__????_${master}*.zip)
+if [ "x$file_zip" != "x" ]; then
+    for i in $file_zip
+    do
+            unzip $i
+            rm -rf $i >/dev/null
+    done
+fi
+S1A.master ${master} ${m_fswa} ${m_lswa} ${m_fbur} ${m_lbur}
+
+if [ "$dem_flag" == "yes" ] || [ "$dem_flag" == "y" ]; then
+	rm -rf ${master}.mli.cord
+	SLC_corners ${master}.mli.par - - > ${master}.mli.cord
+	min_lat=$(cat ${master}.mli.cord | grep 'min. latitude' | awk -F ' ' '{printf "%f", $4-0.3}')
+	max_lat=$(cat ${master}.mli.cord | grep 'min. latitude' | awk -F ' ' '{printf "%f", $8+0.3}')
+	min_lon=$(cat ${master}.mli.cord | grep 'min. longitude' | awk -F ' ' '{printf "%f", $4-0.3}')
+	max_lon=$(cat ${master}.mli.cord | grep 'min. longitude' | awk -F ' ' '{printf "%f", $8+0.3}')
+	cd $procdir
+	mkdir dem
+	cd dem
+	echo "sh_get_dem $max_lat $min_lat $max_lon $min_lon SRTMDEM n"
+	sh_get_dem $max_lat $min_lat $max_lon $min_lon SRTMDEM n
+fi
+
+cd $procdir
+mkdir -p ${slave}
+cd ${slave}
+slave_SLC=`ls $procdir/data/ | grep '^S1' | grep "${slave}"`
+echo $slave_SLC
+ln -s $procdir/data/${slave_SLC} ./
+file_zip=$(ls -1 S1?_IW_SLC__????_${slave}*.zip)
+if [ "x$file_zip" != "x" ]; then
+    for i in $file_zip
+    do
+            unzip $i
+            rm -rf $i >/dev/null
+    done
+fi
+ln -s $procdir/${master}/${master}.mli ./
+ln -s $procdir/${master}/${master}.mli.par ./
+ln -s $procdir/${master}/SLC_tab_${master}
+ln -s $procdir/${master}/${master}_crop* ./
+S1A.slave ${master} ${slave} ${s_fswa} ${s_lswa} ${s_fbur} ${s_lbur}
+
+
+
+# Now rename rslc to slc, in order to make the next processing with process_2pass.csh without coreg stage
+cd $procdir/${master}
+rm ${master}.slc ${master}.slc.par
+
+cd $procdir/${slave}
+echo "cp ${master}.rslc $procdir/${master}/${master}.slc"
+cp ${master}.rslc $procdir/${master}/${master}.slc
+cp ${master}.rslc.par $procdir/${master}/${master}.slc.par
+
+rm ${slave}.slc ${slave}.slc.par
+echo "cp ${slave}.rslc ${slave}.slc"
+cp ${slave}.rslc ${slave}.slc
+cp ${slave}.rslc.par ${slave}.slc.par
+
+# you can try different unwrapping methods by changing the UNWARP_MODEL in process_2pass.csh
+cd $procdir 
+process_2pass.csh $master $slave dem SRTMDEM_final.dem - - - - - - F 10 2 EXTRACT ENDS

@@ -1,22 +1,20 @@
 % This script is used for SBAS analysis with coherence-based pixels
-% selection. step(1,5) thus can be skipped.
+% selection. step(1,5) thus can be skipped. Run under INSAR_$reference folder
 % Zelong Guo, @GFZ, Potsdam
 % First vesion: 02.02.2021
 
-clear;
-clc;
-maxNumCompThreads(8);
+% clear;
+% clc;
+maxNumCompThreads('automatic');
+%maxNumCompThreads(8);
 
-
-diary('cc_sbas.log')
+diary('cc_sbas.log_2')
 diary on
-
-%...
 
 cd SMALL_BASELINES
 % specified the coh-thre and image_fraction
-% mt_ml_select_gamma(0.3,1);
-% 
+mt_ml_select_gamma(0.3,0.5);
+ 
 arch = computer('arch');
 if ~strcmpi(arch(1:3),'win')
     cmd=['ls -1 | grep -v "^[0-9][0-9][0-9][0-9][0-9]*"'];
@@ -40,6 +38,9 @@ end
 
 cd ..
 
+
+%...
+
 % %   srep(1,5) is skipped...
 % %   remove atmospheric phase by gacos
 getparm_aps;
@@ -62,7 +63,7 @@ setparm('subtr_tropo', 'y')
 setparm('unwrap_hold_good_value', 'n');
 setparm('unwrap_method', '3D');
 
-stamps(6,7)
+% stamps(6,7)
 
 
 % % %   re-do phase unwrapping
@@ -74,11 +75,11 @@ stamps(6,6)
 setparm('scla_deramp','y')
 
 stamps(7,7)
-stamps(6,7)
-
-stamps(8,8)
+% stamps(6,7)
 
 diary off;
+
+plot('u-dao','a_gacos',1,0,1)
 
 % %     towarding the satellite
 % ps_plot('v-dao','a_gacos',0,0,0,'ts')

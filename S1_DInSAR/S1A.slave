@@ -1,0 +1,162 @@
+#!/bin/bash
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/ymwen/Soft/glibc-2.14/lib
+#export OLD_LIBRARY_PATH=$LD_LIBRARY_PATH
+
+if [ $# -lt 1 ]; then
+  echo S1A_PROC master slave fswath lswath fstep lstep 
+  exit
+fi
+
+export master=$1
+
+export slave=$2
+
+if [ $# -lt 3 ]; then
+  export fswath=1
+else
+  export fswath=$3
+fi
+
+if [ $# -lt 4 ]; then
+  export lswath=3
+else
+  export lswath=$4
+fi
+
+if [ $# -lt 5 ]; then
+  export fstep=1
+else
+  export fstep=$5
+fi
+
+if [ $# -lt 6 ]; then
+  export lstep=11
+else
+  export lstep=$6
+fi
+
+rm -rf FSLC_tab_${slave}
+
+if [ $fswath -eq 1 ]; then
+  echo "par_S1_SLC */*/s1*-iw1-slc-vv-${slave}*.tiff */*/s1*-iw1-slc-vv-${slave}*.xml */*/*/calibration-s1*-iw1-slc-vv-${slave}*.xml */*/*/noise-s1*-iw1-slc-vv-${slave}*.xml ${slave}.IW1.slc.par ${slave}.IW1.slc ${slave}.IW1.slc.TOPS_par 1"
+  par_S1_SLC */*/s1*-iw1-slc-vv-${slave}*.tiff */*/s1*-iw1-slc-vv-${slave}*.xml */*/*/calibration-s1*-iw1-slc-vv-${slave}*.xml */*/*/noise-s1*-iw1-slc-vv-${slave}*.xml ${slave}.IW1.slc.par ${slave}.IW1.slc ${slave}.IW1.slc.TOPS_par 1 > log
+  echo ${slave}.IW1.slc ${slave}.IW1.slc.par ${slave}.IW1.slc.TOPS_par > FSLC_tab_${slave}
+fi
+
+if [ $lswath -gt 1 -a $fswath -ne 3 ]; then
+  echo "par_S1_SLC */*/s1*-iw2-slc-vv-${slave}*.tiff */*/s1*-iw2-slc-vv-${slave}*.xml */*/*/calibration-s1*-iw2-slc-vv-${slave}*.xml */*/*/noise-s1*-iw2-slc-vv-${slave}*.xml ${slave}.IW2.slc.par ${slave}.IW2.slc ${slave}.IW2.slc.TOPS_par 1"
+  par_S1_SLC */*/s1*-iw2-slc-vv-${slave}*.tiff */*/s1*-iw2-slc-vv-${slave}*.xml */*/*/calibration-s1*-iw2-slc-vv-${slave}*.xml */*/*/noise-s1*-iw2-slc-vv-${slave}*.xml ${slave}.IW2.slc.par ${slave}.IW2.slc ${slave}.IW2.slc.TOPS_par 1 >> log
+  echo ${slave}.IW2.slc ${slave}.IW2.slc.par ${slave}.IW2.slc.TOPS_par >> FSLC_tab_${slave}
+fi
+
+if [ $lswath -eq 3 ]; then
+  echo "par_S1_SLC */*/s1*-iw3-slc-vv-${slave}*.tiff */*/s1*-iw3-slc-vv-${slave}*.xml */*/*/calibration-s1*-iw3-slc-vv-${slave}*.xml */*/*/noise-s1*-iw3-slc-vv-${slave}*.xml ${slave}.IW3.slc.par ${slave}.IW3.slc ${slave}.IW3.slc.TOPS_par 1"
+  par_S1_SLC */*/s1*-iw3-slc-vv-${slave}*.tiff */*/s1*-iw3-slc-vv-${slave}*.xml */*/*/calibration-s1*-iw3-slc-vv-${slave}*.xml */*/*/noise-s1*-iw3-slc-vv-${slave}*.xml ${slave}.IW3.slc.par ${slave}.IW3.slc ${slave}.IW3.slc.TOPS_par 1 >> log
+  echo ${slave}.IW3.slc ${slave}.IW3.slc.par ${slave}.IW3.slc.TOPS_par >> FSLC_tab_${slave}
+fi
+
+# ###############################################################################
+#unset LD_LIBRARY_PATH
+#matlab -nosplash -nodesktop << END
+#date_calc(${slave})
+#exit
+#END
+#export LD_LIBRARY_PATH=$OLD_LIBRARY_PATH
+#eday=`cat eday`
+#aday=`cat aday`
+#sensor=`ls */*/s1*-iw1-slc-vv-${slave}*.tiff | cut -c3`
+#orbitfile=`ls /home/ymwen/ESASAR/Sentinel/S1${sensor}/POEORB/*${eday}*${aday}*`
+# eday=$(date -d "$slave -1 days" "+%Y%m%d")
+# aday=$(date -d "$slave +1 days" "+%Y%m%d")
+# orbitfile=`ls S1*${eday}*${aday}*`
+# ###############################################################################
+
+rm -rf BURST_tab
+
+if [ $fswath -eq 1 ]; then
+#  if [ -n "$orbitfile" ]; then
+    echo "S1_OPOD_vec ${slave}.IW1.slc.par $orbitfile"
+    #S1_OPOD_vec ${slave}.IW1.slc.par $orbitfile >> log
+    OPOD_vec ${slave}.IW1.slc.par $procdir/opod - >> log
+  #fi
+  echo "${fstep} ${lstep}" > BURST_tab
+fi
+
+if [ $lswath -gt 1 -a $fswath -ne 3 ]; then
+  #if [ -n "$orbitfile" ]; then
+    echo "S1_OPOD_vec ${slave}.IW2.slc.par $orbitfile"
+    #S1_OPOD_vec ${slave}.IW2.slc.par $orbitfile >> log
+    OPOD_vec ${slave}.IW2.slc.par $procdir/opod - >> log
+  #fi
+  echo "${fstep} ${lstep}" >> BURST_tab
+fi
+
+if [ $lswath -eq 3 ]; then
+  #if [ -n "$orbitfile" ]; then
+    echo "S1_OPOD_vec ${slave}.IW3.slc.par $orbitfile"
+    #S1_OPOD_vec ${slave}.IW3.slc.par $orbitfile >> log
+    OPOD_vec ${slave}.IW3.slc.par $procdir/opod - >> log
+  #fi
+  #let lstep=lstep-1
+  echo "${fstep} ${lstep}" >> BURST_tab
+fi
+
+cp FSLC_tab_${slave} SLC_tab_${slave}
+
+if [ ${fstep} -ne 1 -o ${lstep} -ne 11 ]; then
+  sed -i s/${slave}/${slave}_crop/g SLC_tab_${slave}
+  echo "SLC_copy_S1_TOPS FSLC_tab_${slave} SLC_tab_${slave} BURST_tab"
+  SLC_copy_ScanSAR FSLC_tab_${slave} SLC_tab_${slave} BURST_tab >> log
+fi
+
+rm -rf EQA* *lt* - tmp aday eday
+
+# remarks on 2019.7.17 19：31
+# these step can be found on page 21 in the GAMMA users guide  << Sentinel-1 data processing>>
+
+# modified DEM and its folder. [Z.L.Guo, 09.02.2021]
+echo "gc_map ${master}.mli.par - $procdir/dem/*.dem_par $procdir/dem/*.dem EQA.dem_par EQA.dem ${master}.lt 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 2 >> log"
+# gc_map ${master}.mli.par - DEM.dem.par DEM.dem EQA.dem_par EQA.dem ${master}.lt 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 2 >> log
+gc_map ${master}.mli.par - $procdir/dem/*_final.dem_par $procdir/dem/*_final.dem EQA.dem_par EQA.dem ${master}.lt 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 2 >> log
+
+echo "pixel_area ${master}.mli.par EQA.dem_par EQA.dem ${master}.lt ls_map inc pix_sigma0 pix_gamma0"
+pixel_area ${master}.mli.par EQA.dem_par EQA.dem ${master}.lt ls_map inc pix_sigma0 pix_gamma0 >> log
+
+echo "create_diff_par ${master}.mli.par - ${master}.diff_par 1 0"
+create_diff_par ${master}.mli.par - ${master}.diff_par 1 0 >> log
+
+echo "offset_pwrm pix_sigma0 ${master}.mli ${master}.diff_par ${master}.offs ${master}.snr 256 256 offsets 2 64 64 0.3"
+offset_pwrm pix_sigma0 ${master}.mli ${master}.diff_par ${master}.offs ${master}.snr 256 256 offsets 2 64 64 0.3 >> log
+
+echo "offset_fitm ${master}.offs ${master}.snr ${master}.diff_par coffs coffsets 0.3 1"
+offset_fitm ${master}.offs ${master}.snr ${master}.diff_par coffs coffsets 0.3 1 >> log
+
+export demw=`grep width: EQA.dem_par | awk '{print $2}'`
+
+export mliw=`grep range_samples: ${master}.mli.par | awk '{print $2}'`
+
+export mlil=`grep azimuth_lines: ${master}.mli.par | awk '{print $2}'`
+
+# echo "gc_map ${master}.mli.par - DEM.dem.par DEM.dem EQA.dem_par EQA.dem ${master}.lt.tmp 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 3 1024"
+echo "gc_map ${master}.mli.par - $procdir/dem/*_final.dem_par $procdir/dem/*_final.dem EQA.dem_par EQA.dem ${master}.lt_tmp 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 2 1024 >> log"
+# gc_map ${master}.mli.par - DEM.dem.par DEM.dem EQA.dem_par EQA.dem ${master}.lt.tmp 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 3 1024 >> log
+gc_map ${master}.mli.par - $procdir/dem/*_final.dem_par $procdir/dem/*_final.dem EQA.dem_par EQA.dem ${master}.lt.tmp 3 2.2 ${master}.sim_sar u v inc psi pix ls_map 8 2 1024 >> log
+
+echo "interp_ad ${master}.lt.tmp ${master}.lt $demw 25 5 16 2 0 1"
+interp_ad ${master}.lt.tmp ${master}.lt $demw 25 5 16 2 0 1 >> log
+
+echo "gc_map_fine ${master}.lt $demw ${master}.diff_par ${master}.lt_fine 1"
+gc_map_fine ${master}.lt $demw ${master}.diff_par ${master}.lt_fine 1 >> log
+
+echo "geocode ${master}.lt_fine EQA.dem $demw ${master}.hgt $mliw $mlil 2 0"
+geocode ${master}.lt_fine EQA.dem $demw ${master}.hgt $mliw $mlil 2 0 >> log
+
+cp SLC_tab_${slave} RSLC_tab_${slave}
+
+sed -i s/slc/rslc/g RSLC_tab_${slave}
+
+echo "S1_coreg_TOPS SLC_tab_${master} ${master} SLC_tab_${slave} ${slave} RSLC_tab_${slave} ${master}.hgt 10 2 - - 0.6 0.02 0.8 1 0"
+# S1_coreg_TOPS SLC_tab_${master} ${master} SLC_tab_${slave} ${slave} RSLC_tab_${slave} ${master}.hgt 10 2 - - 0.6 0.02 0.8 1 0 >> log
+S1_coreg_TOPS SLC_tab_${master} ${master} SLC_tab_${slave} ${slave} RSLC_tab_${slave} ${master}.hgt 10 2 - - 0.8 0.02 0.8 1 0 1>> log
+
+#rm -rf log
