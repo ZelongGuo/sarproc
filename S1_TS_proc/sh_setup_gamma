@@ -2,7 +2,7 @@
 
 # This is a setup table for S1_TS_proc
 
-version="30/12/2020"
+version="03/03/2020"
 
 if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -eq "0"  ]; then
 	cat<<END && exit 1 
@@ -45,8 +45,15 @@ printf "\n  Now the project/processing directory is: $PWD"
 
 case $var1 in
 	"2p" | "2-p" | "2pass" | "2-pass")
-		printf "\n  Sorry, now 2-pass differential interferometric processing is not supported."
-        printf "\n"
+		mkdir -p table
+        cd table
+        [ -e "S1.cfg" ] && rm S1.cfg 
+        cp $S1_TS_PROC_HOME/S1.cfg ./
+        [ -e "READ.ME" ] && rm READ.ME
+        cp $S1_TS_PROC_HOME/READ.ME ./
+        echo " "
+        echo "  The configure file has gotten ready. "
+        echo " "
         ;;
 	"ts" | "timeseries" | "time-series")
 		mkdir -p table

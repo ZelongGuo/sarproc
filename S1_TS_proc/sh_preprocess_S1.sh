@@ -100,36 +100,36 @@ fi
 echo "Cheking opod folder is finished. "
 
 #++++++++++++++++++++++++++++++++++++++++++++ checking the existence of dem folder and downloading DEM if necessary +++++++++++++++++++++++++++++++++++++++++++#
-printf "\n"
-echo "Now working with the dem folder..."
-if [ "$dem_download_flag" == "Y" ] || [ "$dem_download_flag" == "YES" ] || [ "$dem_download_flag" == "y" ] || [ "$dem_download_flag" == "yes" ]; then
-	mkdir -p dem
-	empty_flag=$(ls dem)
-	if [ "x$empty_flag" == "x" ]; then
-		echo "Now downloading the dem files..."
-		cd dem
-		echo "sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type $disdem_flag"
-		sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type $disdem_flag
-		cd ..
-	else 
-		printf "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
-		echo "$0: The dem folder is not empty, please check if the dem files are already existed, or empty the folder!" && exit 1
-		exit 1
-	fi
-elif [ "$dem_download_flag" == "N" ] || [ "$dem_download_flag" == "NO" ] || [ "$dem_download_flag" == "n" ] || [ "$dem_download_flag" == "no" ]; then
-	if [ -d dem ]; then
-		empty_flag=$(ls dem)
-		if [ "x$empty_flag" == "x" ]; then
-			echo "$0: DEM files do not exsit, please check it in dem folder and choose downloading them in configure table!!"
-		fi
-	else
-		echo "$0: Note: the dem directory is not existed! Please check it!!"
-	fi
-else
-	echo "$0: ERROR with the DEM downloading, please check it in the config.table!!" && exit 1
-fi
+#printf "\n"
+#echo "Now working with the dem folder..."
+#if [ "$dem_download_flag" == "Y" ] || [ "$dem_download_flag" == "YES" ] || [ "$dem_download_flag" == "y" ] || [ "$dem_download_flag" == "yes" ]; then
+#	mkdir -p dem
+#	empty_flag=$(ls dem)
+#	if [ "x$empty_flag" == "x" ]; then
+#		echo "Now downloading the dem files..."
+#		cd dem
+#		echo "sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type $disdem_flag"
+#		sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type $disdem_flag
+#		cd ..
+#	else 
+#		printf "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+#		echo "$0: The dem folder is not empty, please check if the dem files are already existed, or empty the folder!" && exit 1
+#		exit 1
+#	fi
+#elif [ "$dem_download_flag" == "N" ] || [ "$dem_download_flag" == "NO" ] || [ "$dem_download_flag" == "n" ] || [ "$dem_download_flag" == "no" ]; then
+#	if [ -d dem ]; then
+#		empty_flag=$(ls dem)
+#		if [ "x$empty_flag" == "x" ]; then
+#			echo "$0: DEM files do not exsit, please check it in dem folder and choose downloading them in configure table!!"
+#		fi
+#	else
+#		echo "$0: Note: the dem directory is not existed! Please check it!!"
+#	fi
+#else
+#	echo "$0: ERROR with the DEM downloading, please check it in the config.table!!" && exit 1
+#fi
 
-echo "Checking dem folder is finished."
+#echo "Checking dem folder is finished."
 echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" 
 date "+%Y-%m-%d %H:%M:%S"
 printf "\n\n\n"

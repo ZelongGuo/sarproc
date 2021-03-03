@@ -4,29 +4,30 @@
 # Zelong Guo @GFZ
 # zelong@gfz-potsdam.de
 # First Version: 14/12/2020
+# Last edited:03.03.2021
 
 
 echo "sh_multi_looking.log" 
 printf "Now the executing directory is %s\n" $PWD
 echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
-reference=$1
-procdir=$2
-datadir=$3
-demdir=$4
-miss_type=$5
-m1_fswa=$6
-m1_lswa=$7
-m1_fbur=$8
-m1_lbur=$9
-m2_fswa=${10}
-m2_lswa=${11}
-m2_fbur=${12}
-m2_lbur=${13}
-ran_look=${14}
-azi_look=${15}
-dem_northover=${16}
-dem_eastover=${17}
+#reference=$1
+#procdir=$2
+#datadir=$3
+#demdir=$4
+#miss_type=$5
+#m1_fswa=$6
+#m1_lswa=$7
+#m1_fbur=$8
+#m1_lbur=$9
+#m2_fswa=${10}
+#m2_lswa=${11}
+#m2_fbur=${12}
+#m2_lbur=${13}
+#ran_look=${14}
+#azi_look=${15}
+#dem_northover=${16}
+#dem_eastover=${17}
 
 miss_type=$(echo "$miss_type" | tr 'A-Z' 'a-z')
 
@@ -104,6 +105,24 @@ multi_look $reference.msc.slc $reference.msc.slc.par $reference.mli $reference.m
 width_mli=$(cat $reference.mli.par | awk '/range_samples:/ {print $2} ')
 line_mli=$(cat $reference.mli.par | awk '/azimuth_lines:/ {print $2} ')
 raspwr $reference.mli $width_mli 1 - 1 1 - - - $reference.mli.bmp
+
+#--------- creat dem DIR and downloading dem if needed -----------#
+if [ "$dem_download_flag" == "Y" ] || [ "$dem_download_flag" == "YES" ] || [ "$dem_download_flag" == "y" ] || [ "$dem_download_flag" == "yes" ]; then
+	rm -rf ${reference}.mli.cord
+	SLC_corners ${reference}.mli.par - - > ${reference}.mli.cord
+	min_lat=$(cat ${reference}.mli.cord | grep 'min. latitude' | awk -F ' ' '{printf "%f", $4-0.3}')
+	max_lat=$(cat ${reference}.mli.cord | grep 'min. latitude' | awk -F ' ' '{printf "%f", $8+0.3}')
+	min_lon=$(cat ${reference}.mli.cord | grep 'min. longitude' | awk -F ' ' '{printf "%f", $4-0.3}')
+	max_lon=$(cat ${reference}.mli.cord | grep 'min. longitude' | awk -F ' ' '{printf "%f", $8+0.3}')
+	cd $procdir
+	mkdir -p dem
+	cd dem
+	echo "sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type n"
+	sh_get_dem $max_lat $min_lat $max_lon $min_lon $dem_type n
+	
+	cd $procdir
+fi
+#------------------------------------------------------------------#
 
 # apply an oversampling such that the resulting pixels are of the order of 20 meters in both directions
 # form look-up tables from the coregitration of dem and mli, resampling or oversampling dem file to proper resolution cell

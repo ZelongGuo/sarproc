@@ -199,6 +199,8 @@ fi
 
 #++++++++++++++++++++++++++++++++++++++++++++++++ delet redundant files ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
 #ls | grep -v ${Mission_type}_final.dem | grep -v ${Mission_type}_final.dem_par | grep -v $0| xargs rm
+rm -rf [A-Z][0-9][0-9][A-Z][0-9][0-9]*
+rm -rf cover_corner* DEM.tab *.log
 
 
 
