@@ -89,10 +89,22 @@ echo Y_UNIT                                   degrees >> $1.unw.rsc
 echo WAVELENGTH                               0.0555041577 >> $1.unw.rsc              
 echo MODEL                                    insar >> $1.unw.rsc
 
+# $1.elev for GACOS
+echo WIDTH				      $width > $1.elev.rsc 
+echo FILE_LENGTH 			      $line >> $1.elev.rsc 
+echo XMIN        			       0 >> $1.elev.rsc
+echo XMAX        			      $width > $1.elev.rsc 
+echo YMIN        			       0 >> $1.elev.rsc
+echo YMAX        			      $line >> $1.elev.rsc
+echo X_FIRST     			      $West >> $1.elev.rsc 
+echo Y_FIRST     			      $North >> $1.elev.rsc 
+echo X_STEP      			      0.00083333 >> $1.elev.rsc
+echo Y_STEP      			      -0.00083333 >> $1.elev.rsc
+echo X_UNIT      			       degres
+echo Y_UNIT      			       degres
 
 mv $1.unw geo_$1_dem_flat.unw
 cp -f $1.unw.rsc $1.inc.rsc
-cp -f $1.unw.rsc $1.elev.rsc
 cp -f $1.unw.rsc $1.azi.rsc
 cp -f $1.unw.rsc geo_$1_dem_flat.unw.rsc
 #cp -f $1.unw.rsc geo_$1_dem_flat_roi.unw.rsc
