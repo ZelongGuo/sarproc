@@ -157,6 +157,8 @@ raspwr EQA.$reference.mli $width_EQA - - - - - - - EQA.$reference.mli.bmp
 geocode EQA.$reference.lt_fine EQA.$reference.dem $width_EQA $reference.hgt.SRTM $width_mli $line_mli 2 0
 rashgt $reference.hgt.SRTM $reference.mli $width_mli - - - - - 150 - - - $reference.hgt.SRTM.bmp
 
+# generate lv_theta and lv_phi for PSO
+look_vector $reference.msc.slc.par - EQA.$reference.dem_par EQA.$reference.dem lv_theta lv_phi
 
 cd $procdir
 

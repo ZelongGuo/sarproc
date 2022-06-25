@@ -16,8 +16,9 @@
  #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
  #+++++++++++++++++++++++++++++++++++++ update log ++++++++++++++++++++++++++++++++++++++++++++
-# 10.12.2020, 16:58 @ GFZ: debuged (500) Internal Server Error in wget with '-U "Opera 11.0"';
+# 10.12.2020, @ GFZ: debuged (500) Internal Server Error in wget with '-U "Opera 11.0"';
 #                          the option of displaying DEM is added;
+# 25.06.2022, @ GFZ: now the script also supports download the 90-m dem (3 arc second) 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #++++++++++++++++++++++++++++++ application +++++++++++++++++++++++++++++
@@ -25,7 +26,8 @@
 #   1. sh_prechecking
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
- version="30/12/2020"
+ #version="30/12/2020"
+ version="25/06/2022"
 
 if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "6"  ]; then
 	cat<<END && exit 1 
@@ -39,7 +41,7 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
   First version:	23/11/2020
   Last edited:		$version
 
-  usage:		$(basename $0) <max_lat> <min_lat> <max_lon> <min_lon> <Mission_type> <disdem_flag>
+  usage:		$(basename $0) <max_lat> <min_lat> <max_lon> <min_lon> <Mission_type> <DEM_type> <disdem_flag>
   
   <max_lat>:        (input) the maximum latitude of interesting area
   <min_lat>:        (input) the minimum latitude of interesting area
@@ -47,6 +49,7 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
   <min_lon>:        (input) the minimum longitude of interesting area
   <Mission_type>:   (input) NASADEM or SRTMDEM
   <disdem_flag>:    (input) if display DEM or not: YES/NO
+  <90m_dem_flag>:   (input) 1 for yes 0 (default) for no; NOTE ONLY SRTMDEM SUPPROT 90-M RESOLUTION
   
 
   Note:         This script is based on GAMMA software.
@@ -67,6 +70,7 @@ max_lon=$3
 min_lon=$4
 Mission_type=$5
 disdem_flag=$6
+dem_flag=$7
 
 # download the hgt file
 echo "processing in matlab....."
@@ -151,24 +155,33 @@ fi
 #++++++++++++++++++++++++++++++++++++ download the files of NASADEM 1 ARC-SEC or SRTM 1 ARC-SEC DEM ++++++++++++++++++++++++++++++++++++++++++#
 NASADEM="https://e4ftl01.cr.usgs.gov/MEASURES/NASADEM_HGT.001/2000.02.11/"
 SRTMDEM="http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
-#SRTMDEM="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
+SRTMDEM_3arcs="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
 
 if [ "$Mission_type" == "NASADEM" ] || [ "$Mission_type" == "nasadem" ]; then
 	file_list=$(cat cover_corner_nasa)
 	for file_name in $file_list
 	do
 		wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${NASADEM}${file_name}
-		[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!" && exit
+		[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!"
 		unzip $file_name	
 	done
 elif [ "$Mission_type" == "SRTMDEM" ] || [ "$Mission_type" == "srtmdem" ]; then
 	file_list=$(cat cover_corner_srtm)
-	for file_name in $file_list
-	do
-		wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${SRTMDEM}$file_name
-		[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!" && exit
-		unzip $file_name
-	done
+	if [ "$dem_flag" == 1 ]; then 
+		for file_name in $file_list
+		do
+			wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${SRTMDEM_3arcs}$file_name
+			[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!"
+			unzip $file_name
+		done
+	else
+		for file_name in $file_list
+		do
+			wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${SRTMDEM}$file_name
+			[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!"
+			unzip $file_name
+		done
+	fi
 else
 	echo "$0: ERROR with the DEM Mission Type, please input 'NASADEM' or 'SRTMDEM' !!!"
 	exit
@@ -189,7 +202,7 @@ do
 	printf "%s.dem  %s.dem_par\n" $dem_prefix $dem_prefix >> DEM.tab
 done
 
-#一定注意参数选择1 0, 选择0 *，DEM拼接边缘就会出现细线！！！！
+# NOTE here the chosen parameters must be 1,0, if you choose 0 *, the edge of the DEM concatenating will have thin lines!!!!
 multi_mosaic DEM.tab ${Mission_type}_final.dem ${Mission_type}_final.dem_par 1 0
 
 #++++++++++++++++++++++++++++++++++++++++++++++ if displaying dem or not +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#

@@ -120,6 +120,9 @@ if [ "$SAR_SATELLITE" == "s1" ] || [ "$SAR_SATELLITE" == "sentinel1" ] || [ "$SA
             cp $procdir/coreg/${slave}.rslc $procdir/${slave}/${slave}.slc
             cp $procdir/coreg/${slave}.rslc.par $procdir/${slave}/${slave}.slc.par
             process_2pass.csh $master $slave dem ${dem_type}_final.dem - - - - - - F $ran_look $azi_look EXTRACT ENDS
+            cd $procdir
+            #sh_creat_psokinv ${master}_${slave}
+            sh_creat_psokinv_downsample ${master}_${slave}
         else
             echo "$0: ERROR with your TYPE!"
             exit

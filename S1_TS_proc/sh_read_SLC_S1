@@ -97,10 +97,10 @@ fi
 if [ -d $opoddir ]; then
 	empty_flag=$(ls -A  $opoddir)
 	if [ "x$empty_flag" == "x" ]; then
-		echo "$0: OPOD files do not exsit, please check it in opod folder" && exit 1
+		echo "$0: OPOD files do not exsit, please check it in opod folder" 
 	fi
 else
-	echo "$0: ERROR, the opod directory is not existed! Please check it!!" && exit 1
+	echo "$0: ERROR, the opod directory is not existed! Please check it!!"
 fi
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++ reading the sensing data and writing it into an array ++++++++++++++++++++++++++++++++++++++++++++++++++#
@@ -255,7 +255,7 @@ else
 		[ "$?" != "0" ] && echo "*********************************************************************************************" && echo "$d" && echo "$0: ERROR with par_S1_SLC at line 188" && echo "" && exit 1
 		if [ "$disslc" == "yes" ] || [ "$disslc" == "y" ]; then
 			w=$(grep 'range_samples' $k.iw$n.slc.par | awk '{print $2}')
-			rasSLC $k.iw$n.slc $w  - - 30 6 - - - - - $k.iw$n.slc.bmp
+			rasSLC $k.iw$n.slc $w  - 0 30 6 - - $k.iw$n.slc.bmp 0
 		fi
 		if [ "$miss_flag" == "s1a" ]; then
 			echo "$k.iw$n.slc $k.iw$n.slc.par $k.iw$n.slc.TOPS_par" >> SLC_tab0
@@ -277,15 +277,23 @@ if [ "$dissel" == "yes" ] || [ "$dissel" == "y" ]; then
 	for p in `ls *sel.slc`
 	do
 		w=$(grep 'range_samples' $p.par | awk '{print $2}')
-		rasSLC $p $w - - 20 4 - - - - - $p.bmp
+		rasSLC $p $w - 0 20 4 - - $p.bmp 0
 	done
 fi
 
 #+++++++++ now opod files will be employed to update slc.par +++++++++++#
-for q in `ls *.sel.slc.par`
-do
+if [ -d $opoddir ]; then
+	empty_flag=$(ls -A  $opoddir)
+	if [ "x$empty_flag" == "x" ]; then
+		echo "$0: OPOD files do not exsit, please check it in opod folder" 
+	fi
+else
+	for q in `ls *.sel.slc.par`
+    do
 	OPOD_vec $q $opoddir -
-done
+    done
+fi
+# updated By ZelongGUo @GFZ
 
 
 echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
