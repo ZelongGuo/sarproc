@@ -29,7 +29,7 @@
  #version="30/12/2020"
  version="25/06/2022"
 
-if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "6"  ]; then
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "7"  ]; then
 	cat<<END && exit 1 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -155,7 +155,7 @@ fi
 #++++++++++++++++++++++++++++++++++++ download the files of NASADEM 1 ARC-SEC or SRTM 1 ARC-SEC DEM ++++++++++++++++++++++++++++++++++++++++++#
 NASADEM="https://e4ftl01.cr.usgs.gov/MEASURES/NASADEM_HGT.001/2000.02.11/"
 SRTMDEM="http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
-SRTMDEM_3arcs="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"
+SRTMDEM_3arcs="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/"
 
 if [ "$Mission_type" == "NASADEM" ] || [ "$Mission_type" == "nasadem" ]; then
 	file_list=$(cat cover_corner_nasa)

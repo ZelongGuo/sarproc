@@ -4,13 +4,29 @@ Expected Structure:
 $procdir ----------- cwd of running sh_gamma.sh
 | | | |
 | | | |------------- table (MANDATORY)
-| | |--------------- data (MANDATORY)
+| | | 
+| | |                                 / S1A*
+| | |--------------- data (MANDATORY) | ...
+| |				      \ S1B*
+| |
 | |----------------- opod (OPTIONAL: can be downloaded)
 |------------------- dem (OPTIONAL: can be downloaded)
   ...
 
 
+If you need to concatenate the SLCs of different images:
 
+$procdir ----------- cwd of running sh_gamma.sh
+| | | |
+| | | |------------- table (MANDATORY)
+| | | 
+| | |--------------- F477 (contains data, opod and table...) \
+| | |  								---> sh_gamma s1 ts data data
+| | |--------------- F478 (contains data, opod and table...) /
+| | 
+| |----------------- data (MANDATORY)                           ---> sh_cat_ScanSAR
+|------------------- dem (OPTIONAL: can be downloaded)
+  ...
 
 
 These scripts are employed to process the Sentinel-1 data, for time series processing.
@@ -20,15 +36,7 @@ To process the Sentinel-1 data with GAMMA:
     2. Editting the configure table as you need in the table folder
     3. Back to $procdir directory, running sh_gamma.sh for batch processing, note inputing the PATHES correctly
         3.1 sh_prechecking.sh, which will call for sh_grep_S1_dates.sh and sh_downloading_S1_opod.sh
-        3.2 sh_read_SLC.sh, which needs several inputing parameters that outputed by sh_prechecking.sh
-	
-	
-	
-	
-
-	
-	
-	
+        3.2 sh_read_SLC.sh, which needs several inputing parameters that output by sh_prechecking.sh
 	
 NOTE: 
     $ori_SARdir (original SAR directory) and $miss_type (mission type) are two of the inputing parameters of sh_grep_S1_dates,  sh_grep_S1_dates would check the mission type (S1A and/or S1B) in original SAR ZIP directory firstly, if in original SAR directory there is/are:
