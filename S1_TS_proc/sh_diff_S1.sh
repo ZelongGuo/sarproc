@@ -83,28 +83,25 @@ do
 
 	if [ "$cp_sub" == "y" ] || [ "$cp_sub" == "yes" ]; then
 
-		# if the files exist then skip
-		if [ ! -f "$k.rmli" ] && [ ! -f "$k.rmli.par" ]; then
-			SLC_copy ../coreg/$k.rslc ../coreg/$k.rslc.par ./$k.rslc ./$k.rslc.par - - $roff $nr $loff $nl
+		SLC_copy ../coreg/$k.rslc ../coreg/$k.rslc.par ./$k.rslc ./$k.rslc.par - - $roff $nr $loff $nl
 		
-			multi_look $k.rslc $k.rslc.par $k.rmli $k.rmli.par $ran_look $azi_look
-			width_mli=$(cat $k.rmli.par | awk '/range_samples:/ {print $2} ')
-			raspwr $k.rmli $width_mli 
-			#///////////////////////////////////////////////
-			# NEXT UPDATE:
-			# creat_offset offset_pwr SLC_interp maybe work
-			#///////////////////////////////////////////////
-		fi
-
-	else
-		ln -s ../coreg/$k.rslc ./
-		ln -s ../coreg/$k.rslc.par ./
 		multi_look $k.rslc $k.rslc.par $k.rmli $k.rmli.par $ran_look $azi_look
-		width_mli=`cat $k.rmli.par | awk '/range_samples:/ {print $2} '`
+		width_mli=$(cat $k.rmli.par | awk '/range_samples:/ {print $2} ')
 		raspwr $k.rmli $width_mli 
 		#///////////////////////////////////////////////
-		# STILL NEED TO UPDATE HERE
+		# NEXT UPDATE:
+		# creat_offset offset_pwr SLC_interp maybe work
 		#///////////////////////////////////////////////
+
+	else
+		# if the files exist then skip
+		if [ ! -f "$k.rmli" ] && [ ! -f "$k.rmli.par" ]; then
+			ln -s ../coreg/$k.rslc ./
+			ln -s ../coreg/$k.rslc.par ./
+			multi_look $k.rslc $k.rslc.par $k.rmli $k.rmli.par $ran_look $azi_look
+			width_mli=`cat $k.rmli.par | awk '/range_samples:/ {print $2} '`
+			raspwr $k.rmli $width_mli 
+		fi
 
 	fi
 done
@@ -114,10 +111,11 @@ make_tab dates RSLC_tab '$1.rslc $1.rslc.par'
 base_calc RSLC_tab $reference.rslc.par bperp_file itab $itab_type 1 $bperp_min $bperp_max $delta_T_min $delta_T_max 
 
 # link the srtm file to subset directory
+[ -e "*hgt.SRTM" ] && rm *hgt.SRTM
 ln -s ../multi_looking/*hgt.SRTM ./
 
 #++++++ creat a new batching processing file ++++++#
-[ -e "bperp_file2" ] && rm batching_file && touch batching_file
+[ -e "bperp_file" ] && rm batching_file && touch batching_file
 srtm=$(ls ../multi_looking/*hgt.SRTM | awk -F '/' '{print $NF}')
 width=$(cat $reference.rmli.par | awk '/range_samples:/ {print$2}')
 awk -v ran_look=$ran_look -v azi_look=$azi_look -v srtm=$srtm -v width=$width '{print $1, $2, $3, ran_look, azi_look, srtm, width}' bperp_file >> batching_file
