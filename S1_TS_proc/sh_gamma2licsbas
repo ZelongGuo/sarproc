@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# this script is used for preparing the files for licsbas from the unw folder of $procdir directory
+# run this script under project DIR $procdir
+# Zelong Guo @GFZ, Potsdam
+# First Version: 07.08.2022
+
+version="08/15/2022"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "1"  ]; then
+	cat<<END && exit 1 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Preparing the files from GAMMA to LiCSBAS.
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	08/15/2022
+  Last edited:		$version
+
+  usage:		$(basename $0) <dis_flag>
+                
+     <dis_flag>:      (input) Yes or no, whether or not plotting the geocoded Ue, Un and Uu
+
+
+    
+            CURRENT DIR: $PWD
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+
+dis_flag=$1
+procdir=$(echo $PWD)
+
+dis_flag=`echo $dis_flag | tr 'A-Z' 'a-z'`
+halfpi=`echo 3.141592653 | awk '{printf "%f\n", $1/2}'`
+
+#-------------------------------------------------------------------------------------
+# lnik the cc and diff files
+if [ -d "GEOC" ]; then
+	rm -rf GEOC
+	mkdir GEOC
+else
+	mkdir GEOC
+fi
+
+cd GEOC
+
+#inft=$(ls -1 $procdir/unw | grep '^[0-9]' | awk -F '.' '{print $1}' | sort | uniq)
+#echo "$inft"
+for i in `ls -1 $procdir/unw | grep '^[0-9]' | awk -F '.' '{print $1}' | sort | uniq`
+do
+	echo "$i"
+	mkdir $i
+	ln -s $procdir/unw/${i}.geo.unw.tif $i
+	ln -s $procdir/unw/${i}.geo.cc.tif $i
+
+done
+
+cd $procdir
+#-------------------------------------------------------------------------------------
+# the NEU and dem geotiffs
+
+# for the azimuth angle: azi = 90 - lv_phi
+dw=`cat $procdir/multi_looking/EQA.*.dem_par | grep "width" | awk '{print $2}'`
+float_math $procdir/multi_looking/lv_phi - temp $dw 2 - - - - -1 0
+float_math  temp - azi $dw 0 - - - - $halfpi 0
+
+# for the incidence angle: inc = 90 - lv_theta
+float_math $procdir/multi_looking/lv_theta - temp $dw 2 - - - - -1 0
+float_math  temp - inc $dw 0 - - - - $halfpi 0
+
+# nex stap we can do the calculation about the unit vector
+float_math azi - sinazi $dw 7 - - - - - 0
+float_math azi - cosazi $dw 8 - - - - - 0
+float_math inc - sininc $dw 7 - - - - - 0
+float_math inc - cosinc $dw 8 - - - - - 0
+
+# ue = -cos(azi)sin(inc)
+float_math cosazi sininc temp $dw 2 - - - - 1 0 
+float_math temp - ue $dw 2 - - - - -1 0 
+
+# un = sin(azi)sin(inc)
+float_math sinazi sininc un $dw 2 - - - - 1 0 
+
+# uu = cos(inc)
+float_math cosinc - uu $dw 2 - - - - 1 0
+
+#  we do not need geocoding
+#geocode_back ue $width $procdir/multi_looking/EQA.$reference.lt_fine ${master}_${slave}.geo.unw $dw 0 0 0
+if [ $dis_flag == "yes" ] || [ $dis_flag == "y" ]; then
+	rasdt_pwr ue $procdir/multi_looking/EQA.*.mli $dw - - - - - - - - geo.ue.bmp
+	rasdt_pwr un $procdir/multi_looking/EQA.*.mli $dw - - - - - - - - geo.un.bmp
+	rasdt_pwr uu $procdir/multi_looking/EQA.*.mli $dw - - - - - - - - geo.uu.bmp
+fi
+
+# convert to geotiff (for LiCs)
+data2geotiff $procdir/multi_looking/EQA.*.dem_par ue 2 ue.geo.E.tif
+data2geotiff $procdir/multi_looking/EQA.*.dem_par un 2 un.geo.N.tif
+data2geotiff $procdir/multi_looking/EQA.*.dem_par uu 2 uu.geo.U.tif
+data2geotiff $procdir/multi_looking/EQA.*.dem_par $procdir/multi_looking/EQA.*.dem 2 dem.geo.hgt.tif
+
+mv ue.geo.E.tif ./GEOC
+mv ue.geo.N.tif ./GEOC
+mv ue.geo.U.tif ./GEOC
+mv dem.geo.hgt.tif ./GEOC
+
+rm temp sinazi cosazi sininc cosinc azi inc
