@@ -8,6 +8,10 @@
 # First Version: 15/12/2020
 # Version: 07.02.2021
 
+#==================================update log ===================================
+# 2022.08.15, multi_look would be skipped if the files existed, zelong guo, GFZ
+#================================================================================
+
 :<<comment
 miss_type=
 reference=
@@ -79,15 +83,18 @@ do
 
 	if [ "$cp_sub" == "y" ] || [ "$cp_sub" == "yes" ]; then
 
-		SLC_copy ../coreg/$k.rslc ../coreg/$k.rslc.par ./$k.rslc ./$k.rslc.par - - $roff $nr $loff $nl
+		# if the files exist then skip
+		if [ ! -f "$k.rmli" ] && [ ! -f "$k.rmli.par" ]; then
+			SLC_copy ../coreg/$k.rslc ../coreg/$k.rslc.par ./$k.rslc ./$k.rslc.par - - $roff $nr $loff $nl
 		
-		multi_look $k.rslc $k.rslc.par $k.rmli $k.rmli.par $ran_look $azi_look
-		width_mli=$(cat $k.rmli.par | awk '/range_samples:/ {print $2} ')
-		raspwr $k.rmli $width_mli 
-		#///////////////////////////////////////////////
-		# NEXT UPDATE:
-		# creat_offset offset_pwr SLC_interp maybe work
-		#///////////////////////////////////////////////
+			multi_look $k.rslc $k.rslc.par $k.rmli $k.rmli.par $ran_look $azi_look
+			width_mli=$(cat $k.rmli.par | awk '/range_samples:/ {print $2} ')
+			raspwr $k.rmli $width_mli 
+			#///////////////////////////////////////////////
+			# NEXT UPDATE:
+			# creat_offset offset_pwr SLC_interp maybe work
+			#///////////////////////////////////////////////
+		fi
 
 	else
 		ln -s ../coreg/$k.rslc ./
@@ -95,6 +102,10 @@ do
 		multi_look $k.rslc $k.rslc.par $k.rmli $k.rmli.par $ran_look $azi_look
 		width_mli=`cat $k.rmli.par | awk '/range_samples:/ {print $2} '`
 		raspwr $k.rmli $width_mli 
+		#///////////////////////////////////////////////
+		# STILL NEED TO UPDATE HERE
+		#///////////////////////////////////////////////
+
 	fi
 done
 
@@ -118,21 +129,50 @@ run_all batching_file 'phase_sim_orb $2.rslc.par $3.rslc.par $2_$3.off $6 $2_$3.
 run_all batching_file 'SLC_diff_intf $2.rslc $3.rslc $2.rslc.par $3.rslc.par $2_$3.off $2_$3.sim_unw $2_$3.diff $4 $5 1 1 0.2'
 run_all batching_file 'rasmph_pwr $2_$3.diff $2.rmli $7'
 
-#+++++ generate coherence files +++++#
-for i in `ls -1 | grep '.diff$'`
-do
-	master=$(echo "$i" | sed 's/_/ /g' | awk '{print $1}')
-	slave=$(echo "$i" | sed 's/_/ /g' | sed 's/\./ /g' | awk '{print $2}')
-	echo "cc_wave $i $master.rmli $slave.rmli ${master}_${slave}.cc $width $ran_look $azi_look 2 "
-	cc_wave $i $master.rmli $slave.rmli ${master}_${slave}.cc $width $ran_look $azi_look 2
-	echo "rascc ${master}_${slave}.cc $master.rmli $width"
-	rascc ${master}_${slave}.cc $master.rmli $width
-done
+# filtering
+#echo "--------------------------------------------------------------------------------------------------"
+#echo "The adaptive filter..."
+#echo "--------------------------------------------------------------------------------------------------"
+#run_all batching_file 'adapt_filt $2_$3.diff $2_$3.diff2 $7 0.25 4'
+#rm -f *.diff
+echo "--------------------------------------------------------------------------------------------------"
+echo "The first adf filter..."
+echo "--------------------------------------------------------------------------------------------------"
+run_all batching_file 'adf $2_$3.diff $2_$3.diff2 $2_$3.cc2 $7 0.2 128 7 16 - - 0.25'
+rm -f *.diff *.cc2
+echo "--------------------------------------------------------------------------------------------------"
+echo "The second adf filter..."
+echo "--------------------------------------------------------------------------------------------------"
+run_all batching_file 'adf $2_$3.diff2 $2_$3.diff3 $2_$3.cc3 $7 0.3 64 7 8 - - 0.25'
+rm -f *.diff2 *.cc3
+echo "--------------------------------------------------------------------------------------------------"
+echo "The third adf filter..."
+echo "--------------------------------------------------------------------------------------------------"
+run_all batching_file 'adf $2_$3.diff3 $2_$3.diff $2_$3.cc $7 0.4 32 7 4 - - 0.25'
+rm -f *.diff3
+echo "--------------------------------------------------------------------------------------------------"
+echo "Now raster the diff and cc files..."
+echo "--------------------------------------------------------------------------------------------------"
+run_all batching_file 'rasmph_pwr $2_$3.diff $2.rmli $7'
+run_all batching_file 'rasdt_pwr $2_$3.cc $2.rmli $7'
+
+# Here we choose not to make Baseline refinement and orbit error mitigation # 
 ### for StaMPS end here
 
-# filtering
-#run_all batching_file 'adf $2_$3.diff $2_$3.diff2.flt $2_$3.diff2.cc $7 0.4 32 5 8 - - 0.2;rasmph_pwr24 $2_$3.diff2.flt $2.rmli $7 - - - 1 1 1. .35 1 $2_$3.diff2.flt.bmp'
-
+#++++    #+++++ generate coherence files +++++#
+#++++    for i in `ls -1 | grep '.diff$'`
+#++++    do
+#++++    	master=$(echo "$i" | sed 's/_/ /g' | awk '{print $1}')
+#++++    	slave=$(echo "$i" | sed 's/_/ /g' | sed 's/\./ /g' | awk '{print $2}')
+#++++    	echo "cc_wave $i $master.rmli $slave.rmli ${master}_${slave}.cc $width $ran_look $azi_look 2 "
+#++++    	cc_wave $i $master.rmli $slave.rmli ${master}_${slave}.cc $width $ran_look $azi_look 2
+#++++    	# For 2021 version, the rascc has been replaced by rasdt_pwr
+#++++    	echo "rascc ${master}_${slave}.cc $master.rmli $width"
+#++++    	rascc ${master}_${slave}.cc $master.rmli $width
+#++++    	#+++   echo "rasdt_pwr ${master}_${slave}.cc $master.rmli $width - - - - - - 0 - ${master}_${slave}.cc.tif"
+#++++    	#+++   # the format matches the LiCSBAS 
+#++++    	#+++   rasdt_pwr ${master}_${slave}.cc $master.rmli $width - - - - - - 0 - ${master}_${slave}.cc.tif
+#++++    done
 
 cd $procdir
 echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
