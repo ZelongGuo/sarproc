@@ -125,7 +125,7 @@ run_all batching_file 'create_offset $2.rslc.par $3.rslc.par $2_$3.off 1 $4 $5 0
 run_all batching_file 'phase_sim_orb $2.rslc.par $3.rslc.par $2_$3.off $6 $2_$3.sim_unw $2.rslc.par - - 1 1'
 #run_all batching_file 'rasrmg $2_$3.sim.unw $2.rmli $7'
 run_all batching_file 'SLC_diff_intf $2.rslc $3.rslc $2.rslc.par $3.rslc.par $2_$3.off $2_$3.sim_unw $2_$3.diff $4 $5 1 1 0.2'
-run_all batching_file 'rasmph_pwr $2_$3.diff $2.rmli $7'
+#run_all batching_file 'rasmph_pwr $2_$3.diff $2.rmli $7'
 
 # filtering
 #echo "--------------------------------------------------------------------------------------------------"
