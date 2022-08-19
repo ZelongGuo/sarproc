@@ -16,7 +16,7 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
   First version:	02/08/2022
   Last edited:		$version
 
-  usage:		$(basename $0) <Frame Folder 1> <Frame Folder 2> <Object Folder> 
+  usage:		$(basename $0) <Frame Folder 1> <Frame Folder 2>  
                 
      <Frame Folder 1>:     (input) the frame folder in current directory, i.e., F477 which should contain the 
 				   data, opod and table foldes in it after the running of sh_gamma * * data data 
@@ -81,7 +81,12 @@ if [ "$time" != "$timecheck" ]; then
 fi
 
 # Now we generate the SLC_0_???????? in the slc_cat folder of curren frame folder
-[ ! -d "slc_cat" ] && mkdir slc_cat                                                                                          
+if [ -d "slc_cat" ];then 
+       rm -rf slc_cat
+       mkdir slc_cat
+else
+	mkdir slc_cat
+fi
 cd slc_cat
 
 slc_file=$(ls -1 ../ | grep '^[0-9]' | grep -v 'bmp' | grep 'sel')
@@ -170,7 +175,12 @@ if [ "$time" != "$timecheck" ]; then
 fi
 
 # Now we generate the SLC_1_???????? in the slc_cat folder of curren frame folder
-[ ! -d "slc_cat" ] && mkdir slc_cat                                                                                          
+if [ -d "slc_cat" ];then 
+       rm -rf slc_cat
+       mkdir slc_cat
+else
+       mkdir slc_cat
+fi
 cd slc_cat
 
 slc_file=$(ls -1 ../ | grep '^[0-9]' | grep -v 'bmp' | grep 'sel')
@@ -211,9 +221,9 @@ done
 # the curent directory.
 #====================================================#
 cd $procdir
+[ -d "data" ] && rm -rf data && mkdir data
 [ ! -d "data" ] && mkdir data
 cd data
-rm -f *
 
 # link the files in frame 1 and frame 2 to current data folder
 for i in `ls -1 ../$FRAME1/data/ | grep '^[0-9]' | grep -v 'bmp' | grep 'sel'`
