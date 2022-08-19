@@ -3,65 +3,109 @@
 # this script is used for unwrapping after the Differential Interferometry
 # run this script under project DIR $procdir
 # Zelong Guo @GFZ, Potsdam
-# First Version: 14.01.2021
+# First Version: 04.08.2022
 
-#reference=20171107
-#slave=20171119
-#width=$(grep 'range_samples:' $reference.rmli.par | awk '{print $2}')
+version="05/08/2022"
 
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "4"  ]; then
+	cat<<END && exit 1 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+  Unwrapping the interferograms from subset folder, the output files, *.geo.cc.tif and *.unw.tif could be used as input files of LiCSBAS.
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	05/08/2022
+  Last edited:		$version
+
+  usage:		$(basename $0) <REFERENCE> <MASTER> <SLAVE> <DIS_UNW_FLAG ><DIS_CC_FLAG> 
+     
+     <REFERENCE>	(input) YYYYMMDD, the reference image for getting the EQ_reference.dme.par
+     <MASTER>:          (input) YYYYMMDD, the data of the sensing date of the master images
+     <SLAVE>:           (input) YYYYMMDD, the data of the sensing date of the slave images
+     <DIS_UNW_FLAG>:    (input) display the .geo.unw, yes or no (default)
+     <DIS_CC_FLAG>:     (input) display the .geo.cc, yes or no (default)
+
+    
+            CURRENT DIR: $PWD
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
 reference=$1
-slave=$2
+master=$2
+slave=$3
+dis_unw_flag=$4
+dis_cc_flag=$5
 
-procdir=$(echo "$PWD")
+dis_unw_flag=$(echo $dis_unw_flag | tr 'A-Z' 'a-z')
+dis_cc_flag=$(echo $dis_cc_flag | tr 'A-Z' 'a-z')
 
-width=$(cat $procdir/subset/$reference.rmli.par | grep 'range_samples:' | awk '{print $2}')
-waveleg=$(cat $procdir/coreg/$reference.rslc.par | grep 'radar_frequency:' | awk '{print $2}' | awk '{printf "%.1f", 300000000/$1*100}')
-half_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1/2}')
-double_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1*2}')
-quadr_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1*4}')
+# procdir=$(echo "$PWD")
+# echo "$procdir"
 
-mkdir -p unw
-cd unw
+#width=$(grep 'range_samples:' $master.rmli.par | awk '{print $2}')
+#width=$(cat $procdir/subset/$master.rmli.par | grep 'range_samples:' | awk '{print $2}')
+width=$(cat $procdir/subset/${master}_${slave}.off | grep 'interferogram_width:' | awk '{print $2}')
+#waveleg=$(cat $procdir/coreg/$master.rslc.par | grep 'radar_frequency:' | awk '{print $2}' | awk '{printf "%.1f", 300000000/$1*100}')
+#half_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1/2}')
+#double_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1*2}')
+#quadr_waveleg=$(echo "$waveleg" | awk '{printf "%.1f", $1*4}')
 
-ln -s $procdir/subset/${reference}_${slave}.diff ./
+# [ -d "unw" ] && rm -rf unw
+# mkdir -p unw
+# cd unw
 
-# filtering
-adf ${reference}_${slave}.diff tmp ${reference}_${slave}.diff2.cc $width 0.2 128 7 16 0 0 0.25;
-adf tmp tmp1 ${reference}_${slave}.diff2.cc $width 0.3 64 7 8 0 0 0.25;
-adf tmp1 ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc $width 0.4 32 7 4 0 0 0.25;
+# ln -s ../subset/${master}_${slave}.diff ./${master}_${slave}.diff.flt
+# ln -s ../subset/${master}_${slave}.cc ./${master}_${slave}.diff.cc
 
-#rasmph_pwr ${reference}_${slave}.diff2.flt $reference.rmli $width - - - 1 1 1. .35 1 ${reference}_${slave}.diff2.flt.bmp
-rasmph_pwr ${reference}_${slave}.diff2.flt $reference.rmli $width - - - 1 1 1. .35 1 
+# rasmph_pwr ${master}_${slave}.diff.flt $procdir/subset/$master.rmli $width
+# echo "rasdt_pwr ${master}_${slave}.cc $procdir/subset/$master.rmli $width"
+# rasdt_pwr ${master}_${slave}.cc $procdir/subset/$master.rmli $width
+# rascc ${master}_${slave}.diff.cc $procdir/subset/$master.rmli $width
 
+# generation of phase unwrapping validity mask
+rascc_mask $procdir/subset/${master}_${slave}.cc $procdir/subset/$master.rmli $width 1 1 0 1 1 .25 0 .1 .9 1 .35 1 ${master}_${slave}.diff.cc.ras
+rascc_mask_thinning ${master}_${slave}.diff.cc.ras $procdir/subset/${master}_${slave}.cc $width ${master}_${slave}.diff.cc.ras_thinning.tif 3 .3 .4 .5 .6 .7
 
-:<<cc
-rascc_mask ${reference}_${slave}.diff2.cc $reference.rmli $width 1 1 0 1 1 .25 .1
-rascc_mask_thinning ${reference}_${slave}.diff2.cc_mask.bmp ${reference}_${slave}.diff2.cc $width ${reference}_${slave}.diff2.cc.ras_thinning.ras 3 .3 .4 .5 
+# phase unwrapping using mcf and triangulation
+mcf $procdir/subset/${master}_${slave}.diff $procdir/subset/${master}_${slave}.cc ${master}_${slave}.diff.cc.ras_thinning.tif ${master}_${slave}.diff.flt.unw_thinned $width 1 0 0 - - 1 1 - - - 0
 
-#rascc_mask_thinning  20171107_20171119.diff2.cc_mask.bmp ${reference}_${slave}.diff2.cc $width ${reference}_${slave}.diff2.cc.mask_thinning.ras 5 .3 .4 .5 .6 .7 
+# weighted interpolation of gaps in unwrapped phase data using adaptive window size
+interp_ad ${master}_${slave}.diff.flt.unw_thinned ${master}_${slave}.unw_interp $width 32 8 16 2
 
-mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc ${reference}_${slave}.diff2.cc.ras_thinning.ras ${reference}_${slave}.diff2.flt.unw $width 1 0 0 - - 1 1 600 - - 0
-rasmph_pwr ${reference}_${slave}.diff2.flt.unw $reference.rmli $width - - - - - .5 - - - - ${reference}_${slave}.diff2.flt.unw.bmp
-#rasmph_pwr 20171106_20171118.diff2.flt.unw 20171106.rmli 2709 - - - - - 1 - - - - 20171106_20171118.diff2.flt.unw.bmp
-cc
+# phase unwrapping using model of unwrapped phase
+unw_model $procdir/subset/${master}_${slave}.diff ${master}_${slave}.unw_interp ${master}_${slave}.unw $width 10 10 -
 
-# change it please
-#mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc - ${reference}_${slave}.diff2.flt.unw $width 1 0 0 - - 1 1 600 - - 0
-#mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc - ${reference}_${slave}.diff2.flt.unw $width - - - - - - - - 5100 2900 
-mcf ${reference}_${slave}.diff2.flt ${reference}_${slave}.diff2.cc - ${reference}_${slave}.diff2.flt.unw $width - - - - - - - - 270 208
+# geocoding the utm and cc files
 dw=`cat $procdir/multi_looking/EQA.$reference.dem_par | grep "width" | awk '{print $2}'`
-geocode_back ${reference}_${slave}.diff2.flt.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${reference}_${slave}.diff2.flt.unw.geo $dw - - 0 
+geocode_back ${master}_${slave}.unw $width $procdir/multi_looking/EQA.$reference.lt_fine ${master}_${slave}.geo.unw $dw 0 0 0 
+geocode_back $procdir/subset/${master}_${slave}.cc $width $procdir/multi_looking/EQA.$reference.lt_fine ${master}_${slave}.geo.cc $dw 0 0 0 
+#geocode_back $procdir/subset/$master.rmli $width $procdir/multi_looking/EQA.$reference.lt_fine ${master}_${slave}.geo.mli $dw 0 0 0 
 
-#rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo - $dw  - - - - - 1 - - - - ${reference}_${slave}.diff2.flt.unw.${half_waveleg}cm.png
-#rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - 1 - - - - ${reference}_${slave}.diff2.flt.unw.${half_waveleg}cm.bmp
-rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo - $dw  
-rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw
+if [ "$dis_unw_flag" == 'yes' ] || [ "$dis_unw_flag" == "y" ]; then
+	rasdt_pwr ${master}_${slave}.geo.unw $procdir/multi_looking/EQA.$reference.mli $dw - - - - - - - - ${master}_${slave}.geo.unw.bmp 
+fi
+if [ "$dis_cc_flag" == 'yes' ] || [ "$dis_cc_flag" == 'y' ]; then
+	rasdt_pwr ${master}_${slave}.geo.cc $procdir/multi_looking/EQA.$reference.mli $dw - - - - - - - - ${master}_${slave}.geo.cc.bmp 
+fi
 
-#convert -transparent black ${reference}_${slave}.diff2.flt.unw.geo.bmp ${reference}_${slave}.diff2.flt.unw.geo.png
-#mk_kml ../EQA.dem_par ${reference}_${slave}.diff2.flt.unw.geo.png ${reference}_${slave}.diff2.flt.unw.geo.kml
+# convert to geotiff files (for LiCs)
+data2geotiff $procdir/multi_looking/EQA.$reference.dem_par ${master}_${slave}.geo.unw 2 ${master}_${slave}.geo.unw.tif
+data2geotiff $procdir/multi_looking/EQA.$reference.dem_par ${master}_${slave}.geo.cc 2 ${master}_${slave}.geo.cc.tif
+#data2geotiff $procdir/multi_looking/EQA.$reference.dem_par ${master}_${slave}.geo.mli 1 ${master}_${slave}.geo.mli.tif
 
-rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - .5 - - - - ${reference}_${slave}.diff2.flt.unw.${waveleg}cm.bmp
-rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - .25 - - - - ${reference}_${slave}.diff2.flt.unw.${double_waveleg}cm.bmp
-rasmph_pwr ${reference}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$reference.mli $dw  - - - - - .125 - - - - ${reference}_${slave}.diff2.flt.unw.${quadr_waveleg}cm.bmp
+rm *.diff.cc.ras *ras_thinning.tif *.flt.unw_thinned 
 
 cd $procdir
+
+
+#convert -transparent black ${master}_${slave}.diff2.flt.unw.geo.bmp ${master}_${slave}.diff2.flt.unw.geo.png
+#mk_kml ../EQA.dem_par ${master}_${slave}.diff2.flt.unw.geo.png ${master}_${slave}.diff2.flt.unw.geo.kml
+
+##  rasmph_pwr ${master}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$master.mli $dw  - - - - - ${master}_${slave}.diff2.flt.unw.${waveleg}cm.bmp .5 - -
+#rasmph_pwr ${master}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$master.mli $dw  - - - - - .25 - - - - ${master}_${slave}.diff2.flt.unw.${double_waveleg}cm.bmp
+#rasmph_pwr ${master}_${slave}.diff2.flt.unw.geo $procdir/multi_looking/EQA.$master.mli $dw  - - - - - .125 - - - - ${master}_${slave}.diff2.flt.unw.${quadr_waveleg}cm.bmp
+#   
