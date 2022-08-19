@@ -39,14 +39,18 @@ East=`echo ${West}  ${width} ${postx} | awk '{printf "%.8f", $1+($2-1)*$3}'`
 
 ##############
 swap_bytes lv_theta lv_theta.phase_swap 4
-gmt xyz2grd lv_theta.phase_swap -Glv_theta.grd -Ddegree/degree/cm/1/0/=/= -R${West}/${East}/${South}/${North} -I1s -ZTLf -di0
+# gmt xyz2grd lv_theta.phase_swap -Glv_theta.grd -Ddegree/degree/cm/1/0/=/= -R${West}/${East}/${South}/${North} -I1s -ZTLf -di0
+gmt xyz2grd lv_theta.phase_swap -Glv_theta.grd -Ddegree/degree/cm/1/0/=/= -R${West}/${East}/${South}/${North} -I1s -ZTLf
 gmt grdmath 90 lv_theta.grd 3.1415926 DIV 180 MUL SUB = lv_theta.grd
-gmt grd2xyz lv_theta.grd -ZTLf -do0 > $1.inc
+# gmt grd2xyz lv_theta.grd -ZTLf -do0 > $1.inc
+gmt grd2xyz lv_theta.grd -ZTLf > $1.inc
 
 swap_bytes lv_phi lv_phi.phase_swap 4
-gmt xyz2grd lv_phi.phase_swap -Glv_phi.grd -Ddegree/degree/cm/1/0/=/= -R${West}/${East}/${South}/${North} -I1s -ZTLf -di0
+# gmt xyz2grd lv_phi.phase_swap -Glv_phi.grd -Ddegree/degree/cm/1/0/=/= -R${West}/${East}/${South}/${North} -I1s -ZTLf -di0
+gmt xyz2grd lv_phi.phase_swap -Glv_phi.grd -Ddegree/degree/cm/1/0/=/= -R${West}/${East}/${South}/${North} -I1s -ZTLf
 gmt grdmath -90 lv_phi.grd 3.1415926 DIV 180 MUL SUB = lv_phi.grd
-gmt grd2xyz lv_phi.grd -ZTLf -do0 > $1.azi
+# gmt grd2xyz lv_phi.grd -ZTLf -do0 > $1.azi
+gmt grd2xyz lv_phi.grd -ZTLf > $1.azi
 
 ymax=`echo $line | awk '{print $1-1}'`
 xmax=`echo $width | awk '{print $1-1}'` 

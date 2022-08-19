@@ -952,9 +952,9 @@ if ($BEGS == "DIFF") then
       echo $EMP
    endif
 
-   #geocode smcc
-   if(-e ${mas_slv}.smcc) then
-      #geocode coherence image
+   #geocode smc
+   if(-e ${mas_mcc) then
+      #geocode nce image
       echo "geocode_back ${mas_slv}.smcc $np $SIMDIR/${mas_slv}.utm_to_rdc_fine ${mas_slv}.smcc_utm $utmw 0 0 0"
       geocode_back ${mas_slv}.smcc $np $SIMDIR/${mas_slv}.utm_to_rdc_fine ${mas_slv}.smcc_utm $utmw 0 0 0 >> $PRJDIR/$intLog
       echo $EMP
