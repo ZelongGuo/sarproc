@@ -52,6 +52,8 @@ bperp_min=$(echo "$S1_cfg" | grep 'minimum bperp' | awk -F '=' '{print $NF}')
 bperp_max=$(echo "$S1_cfg" | grep 'maximum bperp' | awk -F '=' '{print $NF}')
 delta_T_min=$(echo "$S1_cfg" | grep 'minimum days between passes' | awk -F '=' '{print $NF}')
 delta_T_max=$(echo "$S1_cfg" | grep 'maximum days between passes' | awk -F '=' '{print $NF}')
+dis_unw_flag=$(echo "$S1_cfg" | grep 'display geo.unw' | awk -F '=' '{print $NF}')
+dis_cc_flag=$(echo "$S1_cfg" | grep 'display geo.cc' | awk -F '=' '{print $NF}')
 
 
 #++++++++++ deleting the blank space and Tab in the variables above +++++++++++#
@@ -99,6 +101,8 @@ bperp_min=$(echo $bperp_min)
 bperp_max=$(echo $bperp_max)
 delta_T_min=$(echo $delta_T_min)
 delta_T_max=$(echo $delta_T_max)
+dis_unw_flag=$(echo $dis_unw_flag)
+dis_cc_flag=$(echo $dis_cc_flag)
 
 #:<<ZL
 ##++++++++ checking and deleting '/' to the postfix of the directories +++++++++#
