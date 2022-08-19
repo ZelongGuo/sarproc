@@ -1,0 +1,219 @@
+#!/bin/bash
+ 
+# Zelong Guo, 17.08.2022
+ 
+# This script will do multilook AGAIN after the 1st interferometry procssing finished.
+# Please running this script at $procdir folder and the files in the multi_looking, coreg, subset (and unw) of the $procdir will be downsampled/multi-looked.
+# A new folder of ml? will be created.
+# Zelong Guo, 17.08.2022, GFZ, Potsdam
+
+version="18/08/2022"
+
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "3"  ]; then
+	cat<<END && exit 1
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  Multi-looking (downsampling) AGAIN the *.dfif, *.cc, *.geo.unw et al. after the infterferometry...
+
+  Program:		`basename $0`
+  Written by:		Zelong Guo (GFZ, Potsdam)
+  First version:	18/08/2020
+  Last edited:		$version
+
+  usage:		$(basename $0) <BEGS> <ENDS> <NLOOK>
+
+     <BEGS>:               (input)
+     <ENDS>:               (input)
+     <NLOOK>:              (input) the nlook factor used for multi-looking again, both the azi and azi direction
+			   would be downsapled NLOOK times... Please always consider the pixel resolution you need!
+
+  ml   coreg   subset(end here for Stamps)   unwarp (end here for LiCs, though LiCs can do multi-looking itself)
+
+
+            CURRENT DIR: $PWD
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+END
+fi
+
+BEGS=$1
+ENDS=$2
+nlook=$3
+#reference=$2
+reference=20171119
+
+BEGS=$(echo $BEGS | tr 'A-Z' 'a-z')
+ENDS=$(echo $ENDS | tr 'A-Z' 'a-z')
+if [ "$BEGS" != "ml" ] && [ "$BEGS" != "coreg" ] && [ "$BEGS" != "subset" ] && [ "$BEGS" != "unwrap" ]; then
+	echo "Please input the right BEGS!!!"
+	exit 1
+fi
+if [ "$ENDS" != "ml" ] && [ "$ENDS" != "coreg" ] && [ "$ENDS" != "subset" ] && [ "$ENDS" != "unwrap" ]; then
+	echo "Please input the right ENDS!!!"
+	exit 1
+fi
+
+
+procdir=`echo $PWD`
+
+
+echo --------------------------------------------------+
+echo "Now you choose the nlook factor is: $nlook"
+echo "BEGS: $BEGS"
+echo "ENDS: $ENDS"
+echo --------------------------------------------------+
+
+# create the ml${nlook} directory
+[ ! -d "ml${nlook}" ] &&  mkdir ml${nlook}
+cd ml${nlook}
+
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# then create the ralated folfers and generated the files needed:
+# Firstly, doing multi-looking and generate the files,i.e., lookup table
+if [ "$BEGS" == "ml" ]; then
+	[ -d "multi_looking" ] && rm -rf multi_looking
+	mkdir multi_looking
+	cd multi_looking
+	# mli file
+	multi_cpx $procdir/multi_looking/$reference.mli $procdir/multi_looking/$reference.mli.par $reference.mli $reference.mli.par $nlook $nlook
+	width_mli=$(cat $reference.mli.par | awk '/range_samples:/ {print $2} ')
+	line_mli=$(cat $reference.mli.par | awk '/azimuth_lines:/ {print $2} ')
+	raspwr $reference.mli $width_mli 1 - 1 1 - - - $reference.mli.bmp
+
+	# apply an oversampling such that the resulting pixels are of the order of 20 meters in both directions
+	# form look-up tables from the coregitration of dem and mli, resampling or oversampling dem file to proper resolution cell
+	gc_map $reference.mli.par - $procdir/dem/*.dem_par $procdir/dem/*.dem EQA.$reference.dem_par EQA.$reference.dem EQA.$reference.lt 1 1 EQA.$reference.sim_sar EQA.u EQA.v EQA.$reference.inc - - EQA.$reference.ls_map
+	width_EQA=$(cat EQA.$reference.dem_par | awk '/width:/ {print $2} ')
+	line_EQA=$(cat EQA.$reference.dem_par | awk '/nlines:/ {print $2} ')
+	#disdem_par EQA.$reference.dem EQA.$reference.dem_par
+	#dismph EQA.$reference.lt $width_EQA
+	#dispwr EQA.$reference.sim_sar $width_EQA
+
+	# check the quality of the initial geocoding / apply a refinement
+	# get the simulated backscatter image pix_gamma0 on slant geometry based on DEM
+	pixel_area $reference.mli.par EQA.$reference.dem_par EQA.$reference.dem EQA.$reference.lt EQA.$reference.ls_map EQA.$reference.inc $reference.pix_sigma0 $reference.pix_gamma0 10 1
+	#dis2pwr $reference.pix_gamma0 $reference.mli $width_mli $width_mli
+
+	# computation of offset between pix_gamma0 and mli and generation of registration polynomial
+	create_diff_par $reference.mli.par - $reference.diff_par 1 0
+	offset_pwrm $reference.pix_gamma0 $reference.mli $reference.diff_par EQA.offs EQA.snr 512 512 EQA.offsets 1 16 16 0.1
+	offset_fitm EQA.offs EQA.snr $reference.diff_par EQA.coffs EQA.coffsets 0.1 1
+	offset_pwrm $reference.pix_gamma0 $reference.mli $reference.diff_par EQA.offs EQA.snr 256 256 EQA.offsets 2 32 32 0.1
+	offset_fitm EQA.offs EQA.snr $reference.diff_par EQA.coffs EQA.coffsets 0.15 3
+
+	# apply geocoding using refined lookup table
+	gc_map_fine EQA.$reference.lt $width_EQA $reference.diff_par EQA.$reference.lt_fine 1
+
+	# transform between SAR geometry and map
+	# backward geocoding from SAR to map coordinates
+	geocode_back $reference.mli $width_mli EQA.$reference.lt_fine EQA.$reference.mli $width_EQA $line_EQA 5 0 - - 3
+	raspwr EQA.$reference.mli $width_EQA - - - - - - - EQA.$reference.mli.bmp
+
+	# transform SRTM height into SAR geometry
+	geocode EQA.$reference.lt_fine EQA.$reference.dem $width_EQA $reference.hgt.SRTM $width_mli $line_mli 2 0
+	#rashgt $reference.hgt.SRTM $reference.mli $width_mli - - - - - 150 - - - $reference.hgt.SRTM.bmp
+	# NOTE: rashgt has been replaced by rasdt_pwr that has new options for colormap selection and scaling. 
+	rasdt_pwr $reference.hgt.SRTM $reference.mli $width_mli - - - - - - - - $reference.hgt.SRTM.bmp
+
+	# generate lv_theta and lv_phi for PSO
+	look_vector $reference.msc.slc.par - EQA.$reference.dem_par EQA.$reference.dem lv_theta lv_phi
+
+	if [ "$BEGS" == "$ENDS" ]; then
+		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo "  				         +++++++++"
+		echo " NOW multi_looking folder is finished! +++++++++++++"
+		echo "  				         +++++++++"
+		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		exit 0
+	else
+		BEGS="coreg"
+	fi
+fi
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+if [ "$BEGS" == "coreg" ]; then
+	cd $procdir/ml$nlook
+	rm -rf coreg
+	ln -s $procdir/coreg ./
+	if [ "$BEGS" == "$ENDS" ]; then
+		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo "  				                           +++++++++"
+		echo " NOW COREG folder has been linked to ml$nlook folder!!   +++++++++++++"
+		echo "  				                           +++++++++"
+		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		exit 0
+	else
+		BEGS="subset"
+	fi
+fi
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+if [ "$BEGS" == "subset" ]; then
+	cd $procdir/ml$nlook
+	[ -d "subset" ] && rm -rf subset 
+	mkdir subset
+	cd subset
+	# now multi-look the *.diff and *.cc files
+	for i in `ls -1 $procdir/subset/*.diff | awk -F '/' '{print $NF}'`
+	do
+		k=`echo $i | awk -F '.' '{print $1}'`
+		multi_cpx $procdir/subset/$k.diff $procdir/subset/$k.off $k.diff $k.off $nlook $nlook
+		multi_real $procdir/subset/$k.cc $procdir/subset/$k.off $k.cc $k.cc.off $nlook $nlook
+		rm $k.cc.off
+		width=$(cat $k.off | awk '/interferogram_width:/ {print $2}')
+		rasmph_pwr $k.diff - $width
+		rasdt_pwr $k.cc - $width
+	done
+	# the rmli files
+	for i in `ls -1 $procdir/subset/*.rmli | awk -F '/' '{print $NF}'`
+	do
+		master=`echo $i | awk -F '.' '{print $1}'`
+		multi_cpx $procdir/subset/$master.rmli $procdir/subset/$master.rmli.par $master.rmli $master.rmli.par $nlook $nlook
+	done
+
+	if [ "$BEGS" == "$ENDS" ]; then
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo "  				            +++++++++"
+		echo " NOW SUBSET folder has been finished!!    +++++++++++++"
+		echo "  				            +++++++++"
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		exit 0
+	else
+		BEGS="unwrap"
+	fi
+fi
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+if [ "$BEGS" == "unwrap" ]; then
+	cd $procdir/ml${nlook}
+	[ -d "unw" ] && rm -rf unw
+	mkdir unw
+	cd unw
+	# now multi-look the *.diff and *.cc files
+	for i in `ls -1 $procdir/unw/*.geo.unw | awk -F '/' '{print $NF}'`
+	do
+		k=`echo $i | awk -F '.' '{print $1}'`
+		multi_real $procdir/unw/$k.unw $procdir/subset/$k.off $k.unw $k.unw.off $nlook $nlook
+		multi_real $procdir/subset/$k.cc $procdir/subset/$k.off $k.cc $k.cc.off $nlook $nlook
+		rm $k.cc.off
+		width=$(cat $procdir/ml$nlook/unw/$k.unw.off | grep 'interferogram_width:' | awk '{print $2}')
+		dw=`cat $procdir/ml$nlook/multi_looking/EQA.$reference.dem_par | grep "width" | awk '{print $2}'`
+		geocode_back $k.unw $width $procdir/ml$nlook/multi_looking/EQA.$reference.lt_fine $k.geo.unw $dw 0 0 0
+		geocode_back $k.cc $width $procdir/ml$nlook/multi_looking/EQA.$reference.lt_fine $k.geo.cc $dw 0 0 0
+
+		rasdt_pwr $k.geo.unw - $dw - - - - - - - - $k.geo.unw.bmp
+		rasdt_pwr $k.geo.cc - $dw - - - - - - - - $k.geo.cc.bmp
+
+		# convert to geotiff files (for LiCs)
+		data2geotiff $procdir/ml$nlook/multi_looking/EQA.$reference.dem_par $k.geo.unw 2 $k.geo.unw.tif
+		data2geotiff $procdir/ml$nlook/multi_looking/EQA.$reference.dem_par $k.geo.cc 2 $k.geo.cc.tif
+	done
+fi
+
+
+
+
+
+
+
+
+
