@@ -23,8 +23,8 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
   
   <method>:	(input) PS, SBAS or CCSBAS(coherence-based SBAS)
   <reference>:  (input) the date of reference image (YYYYMMDD)
-  <ran_look>:   (input) range looks
-  <azi_look>:   (input) azimuth looks
+  <ran_look>:   (input) range looks, NOTE you should multipy NLOOK if your working folder is ml_nlook
+  <azi_look>:   (input) azimuth looks, NOTE you should multipy NLOOK if your working folder is ml_nlook
   <gacos_flag>: (input) generate kml and date list file for gacos (1 for yes, 0 for no), if 1 (yes):
          1. <path>:       (input) the path of S1 SAR files (i.e. the path cintainng S1[AB]_IW_SLC_* files)
          2. <grep_start>: (input) the start date

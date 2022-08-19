@@ -64,7 +64,7 @@ cd $procdir
 #-------------------------------------------------------------------------------------
 # the NEU and dem geotiffs
 
-# for the azimuth angle: azi = 90 - lv_phi
+# for the azimuth angle: azi = 90 - lv_phi, note here different with the azi denfination in PSO (sh_creat_psokinv_downsampl)
 dw=`cat $procdir/multi_looking/EQA.*.dem_par | grep "width" | awk '{print $2}'`
 float_math $procdir/multi_looking/lv_phi - temp $dw 2 - - - - -1 0
 float_math  temp - azi $dw 0 - - - - $halfpi 0
