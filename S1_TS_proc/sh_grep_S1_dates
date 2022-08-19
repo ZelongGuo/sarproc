@@ -65,6 +65,10 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
 END
 fi
 
+#---------------------- update log ------------------
+# 2022.08.08 delete the duplicates in case of the frame concatenating
+#--------------------------------- ------------------
+
 # input the path of the original SAR zip files (i.e. the path of downloaded SAR files)
 # the folder shoud contains the ZIP files only
 #path="/misc/zs7/Zelong/2017_Iraq-Iran_EQ/T072AA"
@@ -107,7 +111,7 @@ if [ $mission_type == "s1a" ]; then
         file_list=$(echo "$file_list" | grep 'S1A_IW_SLC_' | grep 'zip')
     fi
     
-    file_list_s1a=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1a' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    file_list_s1a=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1a' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}' | sort | uniq)
     mission_type_flag=$(echo $file_list_s1a | wc -w)
     [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1A data in the original SAR directory! Please check it!" && echo "" && exit 1
     
@@ -138,7 +142,9 @@ elif [ $mission_type == "s1b"  ]; then
         file_list=$(echo "$file_list" | grep 'S1B_IW_SLC_' | grep 'zip')
     fi
         
-    file_list_s1b=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    #file_list_s1b=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    # delete the duplicates in case of the frame concatenating
+    file_list_s1b=$(echo "$file_list"| tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}' | sort | uniq)
      
     mission_type_flag=$(echo $file_list_s1b | wc -w)
     [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1B data in the original SAR directory! Please check it!" && echo "" && exit 1
@@ -177,8 +183,8 @@ elif [ $mission_type == "both" ]; then
         file_list2=$(echo "$file_list" | grep 'S1B_IW_SLC_' | grep 'zip')
     fi
     
-    file_list_s1a=$(echo "$file_list1" | tr 'A-Z' 'a-z' | grep 's1a' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
-    file_list_s1b=$(echo "$file_list2" | tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}')
+    file_list_s1a=$(echo "$file_list1" | tr 'A-Z' 'a-z' | grep 's1a' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}' | sort | uniq)
+    file_list_s1b=$(echo "$file_list2" | tr 'A-Z' 'a-z' | grep 's1b' | sed 's/_/ /g' | awk -F ' ' '{print $5}' | sed 's/t/ /g' | awk '{print $1}' | sort | uniq)
     mission_type_flag=$(echo $file_list_s1a | wc -w)
     [ "$mission_type_flag" == "0" ] && echo "$0: There is no S1A data in the original SAR directory! Please check it!" && echo "" && exit 1
     mission_type_flag=$(echo $file_list_s1b | wc -w)
