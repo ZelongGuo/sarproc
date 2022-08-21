@@ -104,8 +104,8 @@ data2geotiff $procdir/multi_looking/EQA.*.dem_par uu 2 uu.geo.U.tif
 data2geotiff $procdir/multi_looking/EQA.*.dem_par $procdir/multi_looking/EQA.*.dem 2 dem.geo.hgt.tif
 
 mv ue.geo.E.tif ./GEOC
-mv ue.geo.N.tif ./GEOC
-mv ue.geo.U.tif ./GEOC
+mv un.geo.N.tif ./GEOC
+mv uu.geo.U.tif ./GEOC
 mv dem.geo.hgt.tif ./GEOC
 
-rm temp sinazi cosazi sininc cosinc azi inc
+rm ue un uu temp sinazi cosazi sininc cosinc azi inc
