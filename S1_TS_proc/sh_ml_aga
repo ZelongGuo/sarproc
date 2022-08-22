@@ -9,7 +9,7 @@
 
 version="18/08/2022"
 
-if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "3"  ]; then
+if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "4"  ]; then
 	cat<<END && exit 1
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -21,11 +21,13 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
   First version:	18/08/2020
   Last edited:		$version
 
-  usage:		$(basename $0) <BEGS> <ENDS> <NLOOK>
+  usage:		$(basename $0) <BEGS> <ENDS> <NLOOK> <REFERENCE>
 
      <BEGS>:               (input)
      <ENDS>:               (input)
      <NLOOK>:              (input) the nlook factor used for multi-looking again, both the azi and azi direction
+     <REFERENCE> 	   (input) the reference image chosen in multi-looking of GAMMA interferometry
+
 			   would be downsapled NLOOK times... Please always consider the pixel resolution you need!
 
   ml   coreg   subset(end here for Stamps)   unwarp (end here for LiCs, though LiCs can do multi-looking itself)
@@ -42,7 +44,7 @@ BEGS=$1
 ENDS=$2
 nlook=$3
 #reference=$2
-reference=20171119
+reference=$4
 
 BEGS=$(echo $BEGS | tr 'A-Z' 'a-z')
 ENDS=$(echo $ENDS | tr 'A-Z' 'a-z')
