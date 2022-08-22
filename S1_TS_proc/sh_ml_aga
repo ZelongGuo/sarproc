@@ -18,7 +18,7 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
 
   Program:		`basename $0`
   Written by:		Zelong Guo (GFZ, Potsdam)
-  First version:	18/08/2020
+  First version:	18/08/2022
   Last edited:		$version
 
   usage:		$(basename $0) <BEGS> <ENDS> <NLOOK> <REFERENCE>
