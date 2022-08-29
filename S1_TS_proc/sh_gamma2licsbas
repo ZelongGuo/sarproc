@@ -5,7 +5,7 @@
 # Zelong Guo @GFZ, Potsdam
 # First Version: 07.08.2022
 
-version="08/15/2022"
+version="08/28/2022"
 
 if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt "1"  ]; then
 	cat<<END && exit 1 
@@ -31,6 +31,10 @@ if [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ "$1" == "-h" ] || [ "$#" -lt
 
 END
 fi
+
+# ==================================== UPDATE LOG ===========================================
+# Update the inc and azi calculation to get the correct results, Zelong Guo, @GFZ, 2022.08.28
+# ===========================================================================================
 
 dis_flag=$1
 procdir=$(echo $PWD)
@@ -63,49 +67,77 @@ done
 cd $procdir
 #-------------------------------------------------------------------------------------
 # the NEU and dem geotiffs
+# convert to geotiff (for LiCs)
+data2geotiff $procdir/multi_looking/EQA.*.dem_par $procdir/multi_looking/EQA.*.dem 2 dem.geo.hgt.tif
+data2geotiff $procdir/multi_looking/EQA.*.dem_par $procdir/multi_looking/lv_theta 2 lv_theta.geo.tif
+data2geotiff $procdir/multi_looking/EQA.*.dem_par $procdir/multi_looking/lv_phi 2 lv_phi.geo.tif
 
-# for the azimuth angle: azi = 90 - lv_phi, note here different with the azi denfination in PSO (sh_creat_psokinv_downsampl)
-dw=`cat $procdir/multi_looking/EQA.*.dem_par | grep "width" | awk '{print $2}'`
-float_math $procdir/multi_looking/lv_phi - temp $dw 2 - - - - -1 0
-float_math  temp - azi $dw 0 - - - - $halfpi 0
+gdal_translate -of NetCDF lv_theta.geo.tif lv_theta.geo.nc
+gdal_translate -of NetCDF lv_phi.geo.tif lv_phi.geo.nc
 
-# for the incidence angle: inc = 90 - lv_theta
-float_math $procdir/multi_looking/lv_theta - temp $dw 2 - - - - -1 0
-float_math  temp - inc $dw 0 - - - - $halfpi 0
+# real inc and azi
+gmt grdmath 90 lv_theta.geo.nc 3.1415926 DIV 180 MUL SUB = inc_deg.nc
+gmt grdmath -180 lv_phi.geo.nc 3.1415926 DIV 180 MUL SUB = azi_deg.nc
 
-# nex stap we can do the calculation about the unit vector
-float_math azi - sinazi $dw 7 - - - - - 0
-float_math azi - cosazi $dw 8 - - - - - 0
-float_math inc - sininc $dw 7 - - - - - 0
-float_math inc - cosinc $dw 8 - - - - - 0
-
+# calculate the projection unit vectors
 # ue = -cos(azi)sin(inc)
-float_math cosazi sininc temp $dw 2 - - - - 1 0 
-float_math temp - ue $dw 2 - - - - -1 0 
-
+gmt grdmath azi_deg.nc COSD inc_deg.nc SIND MUL NEG = ue.nc
 # un = sin(azi)sin(inc)
-float_math sinazi sininc un $dw 2 - - - - 1 0 
-
+gmt grdmath azi_deg.nc SIND inc_deg.nc SIND MUL = un.nc
 # uu = cos(inc)
-float_math cosinc - uu $dw 2 - - - - 1 0
+gmt grdmath inc_deg.nc COSD = uu.nc
+
+gdal_translate -of GTiff ue.nc  ue.geo.E.tif
+gdal_translate -of GTiff un.nc  un.geo.N.tif
+gdal_translate -of GTiff uu.nc  uu.geo.U.tif
 
 #  we do not need geocoding
 #geocode_back ue $width $procdir/multi_looking/EQA.$reference.lt_fine ${master}_${slave}.geo.unw $dw 0 0 0
 if [ $dis_flag == "yes" ] || [ $dis_flag == "y" ]; then
-	rasdt_pwr ue $procdir/multi_looking/EQA.*.mli $dw - - - - - - - - geo.ue.bmp
-	rasdt_pwr un $procdir/multi_looking/EQA.*.mli $dw - - - - - - - - geo.un.bmp
-	rasdt_pwr uu $procdir/multi_looking/EQA.*.mli $dw - - - - - - - - geo.uu.bmp
-fi
+	echo "NOW we are plotting the UE, UN and UU..."
+	echo "UE is plotting NOW..."
+	#=============================== UE ======================================
+	zmin=`gmt grdinfo ue.nc | grep 'z_min' | awk -F ' ' '{print $3}'`
+	zmax=`gmt grdinfo ue.nc | grep 'z_min' | awk -F ' ' '{print $5}'`
 
-# convert to geotiff (for LiCs)
-data2geotiff $procdir/multi_looking/EQA.*.dem_par ue 2 ue.geo.E.tif
-data2geotiff $procdir/multi_looking/EQA.*.dem_par un 2 un.geo.N.tif
-data2geotiff $procdir/multi_looking/EQA.*.dem_par uu 2 uu.geo.U.tif
-data2geotiff $procdir/multi_looking/EQA.*.dem_par $procdir/multi_looking/EQA.*.dem 2 dem.geo.hgt.tif
+	gmt makecpt -Cpolar -T$zmin/$zmax -D  > temp.cpt
+	gmt set MAP_FRAME_TYPE Plain
+	gmt begin ue tif
+	gmt grdimage -JX8c -Bxafg0 -Byafg0 ./ue.nc -Ctemp.cpt -Q
+	gmt colorbar -Ctemp.cpt -DjBL+o0.5c/0.5c+w3/0.3c+h+e+ml -Bafg0+l"UE -cos(azi)sin(inc)" --FONT_ANNOT_PRIMARY=8p --FONT_LABEL=8p --MAP_FRAME_PEN=0.2p --MAP_TICK_LENGTH=0.03c
+	gmt end
+	echo "UE plotting is done..."
+	#=============================== UN ======================================
+	echo "UN is plotting NOW..."
+	zmin=`gmt grdinfo un.nc | grep 'z_min' | awk -F ' ' '{print $3}'`
+	zmax=`gmt grdinfo un.nc | grep 'z_min' | awk -F ' ' '{print $5}'`
+
+	gmt makecpt -Cpolar -T$zmin/$zmax -D  > temp.cpt
+	gmt set MAP_FRAME_TYPE Plain
+	gmt begin un tif
+	gmt grdimage -JX8c -Bxafg0 -Byafg0 ./un.nc -Ctemp.cpt -Q
+	gmt colorbar -Ctemp.cpt -DjBL+o0.5c/0.5c+w3/0.3c+h+e+ml -Bafg0+l"UN sin(azi)sin(inc)" --FONT_ANNOT_PRIMARY=8p --FONT_LABEL=8p --MAP_FRAME_PEN=0.2p --MAP_TICK_LENGTH=0.03c
+	gmt end
+	echo "UN plotting is done..."
+	#=============================== UU ======================================
+	echo "UU is plotting NOW..."
+	zmin=`gmt grdinfo uu.nc | grep 'z_min' | awk -F ' ' '{print $3}'`
+	zmax=`gmt grdinfo uu.nc | grep 'z_min' | awk -F ' ' '{print $5}'`
+
+	gmt makecpt -Cpolar -T$zmin/$zmax -D  > temp.cpt
+	gmt set MAP_FRAME_TYPE Plain
+	gmt begin uu tif
+	gmt grdimage -JX8c -Bxafg0 -Byafg0 ./uu.nc -Ctemp.cpt -Q
+	gmt colorbar -Ctemp.cpt -DjBL+o0.5c/0.5c+w3/0.3c+h+e+ml -Bafg0+l"UU cos(inc)" --FONT_ANNOT_PRIMARY=8p --FONT_LABEL=8p --MAP_FRAME_PEN=0.2p --MAP_TICK_LENGTH=0.03c
+	gmt end
+	echo "UU plotting is done..."
+
+fi
 
 mv ue.geo.E.tif ./GEOC
 mv un.geo.N.tif ./GEOC
 mv uu.geo.U.tif ./GEOC
 mv dem.geo.hgt.tif ./GEOC
 
-rm ue un uu temp sinazi cosazi sininc cosinc azi inc
+rm lv_theta.geo.tif lv_phi.geo.tif ue.nc uu.nc un.nc gmt* temp.cpt
+rm *deg.nc *geo.nc
