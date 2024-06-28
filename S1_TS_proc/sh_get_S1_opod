@@ -30,9 +30,6 @@
 # NEXT UPDATE: the function of select the Orbit Type: POEORB or RESORB
 #/////////////////////////////////////////////////////////////////////
 
-#-------------------------------------------------------------------------------
-# -lt等只能用与判断integer类型，==既可用于判断integer也能用于判断string
-#------------------------------------------------------------------------------- 
 
 
 version="01/01/2020"
@@ -132,26 +129,6 @@ do
 
 file_list_need=$(echo "$file_list_mission" | grep ${validity_start}'.*'${validity_stop} )
 #echo "$file_list_need" 
-#------------------------------------------------------------------------------------------------------------#
-# 1.（1）如果是单行结果赋值给变量：
-#上面grep一行也可以写成：grep "${validity_start"'.*'"${validity_stop"}, 两者的区别就在于变量有没有被""包括起来，
-#其实，对于单行元素，输出结果 echo $validity_start = echo "$validity_start"，也就是""返回变量的‘值’，而echo 
-# '$validity_start'返回的是 $validity_start,返回的仅仅是‘字符串’而已！
-# 1.（2）如果是多行元素赋值给变量：也即如果$validity_start有多行
-# echo $validity_start != echo "$validity_start"!!!!!!!!!!!!!这是因为echo $validity_start 返回的结果就是1行，而
-# echo "$validity_start"返回的是多行，也即按照原格式输出!!!!!!!注意此处，建议使用双引号!!!!!!!!!!!!!!!!
-#
-# 2.grep的通常用法就是grep ‘’，所以上面的正则表达式.*要用‘’括起来，也可以看出，grep不仅可以精确查找含某个字符串的
-#行，还可以查找含两个乃至多个字符串的行（利用正则表达式的任意字节.与重复字节*）！正则表达式还要继续学习.
-#
-# 3.上面其实也等于grep $validity_start | grep $validity_stop, 也就是连用两个grep,所以最准确的写法应该是
-#grep $validity_start'........'$validity_stop (指明两个变量之间存在8个任意字节)
-#
-# 4.在bash shell中，很多符号意义是不同的：比如，*在Linux代表通配符;在正则表达式代表任意字符;而awk中则有其自己的语
-#法. 比如单引号的使用：awk 'NR=='$i' {print $0}' url_1.log awk引用外部变量i必须用单引号双引号什么的括起来，还比较
-#复杂没弄清楚，或者也可以使用-v来声明外部变量（下面有用），这一点与上面我们提到的是不同的，因此可以理解为awk自有语法.
-#------------------------------------------------------------------------------------------------------------#
-#echo "$?"
 
 #:<<!
 	if [ "$mission_type" == "S1A" ] || [ "$mission_type" == "s1a" ] || [ "$mission_type" == "S1B" ] || [ "$mission_type" == "s1b" ]; then
@@ -167,8 +144,6 @@ file_list_need=$(echo "$file_list_mission" | grep ${validity_start}'.*'${validit
 			printf '\tPlease see the sh_get_S1_opod.log.'
 			printf '\n\n'
 			#----------------------------------------------------
-			#echo 不支持\n,\t等字符，printf更为强大
-			# if []内的内容同判断符号[]的写法
 			#---------------------------------------------------#
 		fi
 
@@ -176,15 +151,10 @@ file_list_need=$(echo "$file_list_mission" | grep ${validity_start}'.*'${validit
 		line_num=$(echo "$file_list_need" | wc -l)
 		word_num=$(echo "$file_list_need" | wc -w)
 		#------------------------------------------#	
-		# 想要向读取文件一样来读取变量就先echo一下！！
-		# 文件可以用cat全取出来，变量要用echo全读出来
 		#------------------------------------------#
 		echo "**************************************"
 		[ "$line_num" == "1"  ] && [ "$word_num" == "0"  ] && let line_num=0 
 		#-----------------------------------------------------------------------------------------#	
-		# 判断$file_list_need有几行（分别对应于下方的0,1或2行），可问题是就算$file_list_need是0行，
-		# 其$line_num值仍然为1,因此又引入了变量来统计单词数目，如果单词数目也为0的话，就证明没有
-		# 记录，从而令line_num为0.	**********不知道该行能否继续优化*********
 		#-----------------------------------------------------------------------------------------#
 
 		if [ "$line_num" == "0"  ]; then
@@ -203,8 +173,6 @@ file_list_need=$(echo "$file_list_mission" | grep ${validity_start}'.*'${validit
 			let do_flag+=2
 			echo "$file_list_need" | awk -v ASF=$ASF '{tep=ASF$0; print tep}'  > file_list_need.log
 			#--------------------------------------------------------------------------#
-			#注意echo内的变量需要用""包起来，因为file_list_need含有多行!!!!!!
-			# 注意awk引用外部变量的时候可以用-v指明，用单双引号也可以，但是感觉比较繁琐
 			#--------------------------------------------------------------------------#
 			wget --no-check-certificate --user=zelong --password=GuoZeLong0928 -c -i file_list_need.log
 			printf "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++\n"

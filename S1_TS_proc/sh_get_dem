@@ -161,7 +161,7 @@ if [ "$Mission_type" == "NASADEM" ] || [ "$Mission_type" == "nasadem" ]; then
 	file_list=$(cat cover_corner_nasa)
 	for file_name in $file_list
 	do
-		wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${NASADEM}${file_name}
+		wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=q2f77T3#TCBVntt -c ${NASADEM}${file_name}
 		[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!"
 		unzip $file_name	
 	done
@@ -170,14 +170,14 @@ elif [ "$Mission_type" == "SRTMDEM" ] || [ "$Mission_type" == "srtmdem" ]; then
 	if [ "$dem_flag" == 1 ]; then 
 		for file_name in $file_list
 		do
-			wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${SRTMDEM_3arcs}$file_name
+			wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=q2f77T3#TCBVntt -c ${SRTMDEM_3arcs}$file_name
 			[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!"
 			unzip $file_name
 		done
 	else
 		for file_name in $file_list
 		do
-			wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=GuoZeLong0928 -c ${SRTMDEM}$file_name
+			wget -U "Opera 11.0" --no-check-certificate --user=zelong0928 --password=q2f77T3#TCBVntt -c ${SRTMDEM}$file_name
 			[ ! -e "$file_name" ] && echo "$0: Download failed with $file_name !!!"
 			unzip $file_name
 		done
@@ -187,7 +187,7 @@ else
 	exit
 
 fi
-#file_list=$(curl -s -u zelong0928:GuoZeLong0928 $NASADEM) 
+#file_list=$(curl -s -u zelong0928:q2f77T3#TCBVntt $NASADEM) 
 #[ "$?" -ne "0" ] && echo "Error! Please check!" && exit
 #echo "$file_list"
 
