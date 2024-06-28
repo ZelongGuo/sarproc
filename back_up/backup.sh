@@ -2,11 +2,11 @@
  
  cd /     
  
-         path="/home/zelong/Desktop/my_scripts/back_up"  
-  #备份到对应目录下
+        path="/home/zelong/Desktop/my_scripts/back_up"  
+  # backup to corresponding directory
  
         way="/home/zelong/Desktop/my_scripts/S1_TS_proc"    
-  #需要备份的路径
+  # directory needed to be backup to
  
  
  #       -P specifies the absolute path (defualt is relative path)
