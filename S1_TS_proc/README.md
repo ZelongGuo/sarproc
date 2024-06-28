@@ -7,6 +7,34 @@ These scripts are used for batch processing Sentinel-1 time series, based on GAM
 - Converting to [StaMPS](https://github.com/dbekaert/StaMPS) format for time series analysis.
 - Converting to [LiCSBAS](https://github.com/yumorishita/LiCSBAS) format for time series analysis.
 
+#### Scripts in S1_TS_proc ####
+- *For TS batch processing:*
+  - *sh_setup_gamma*
+  - *sh_gamma*
+  - *sh_read_cfg_S1*
+  - *sh_preprocess_S1*  
+    - *sh_grep_S1_dates*
+    - *sh_get_S1_opod*
+  - *sh_read_SLC_S1*
+  - *sh_multi_looking*  
+    - *sh_get_dem*
+  - *sh_coreg_S1*
+  - *sh_diff_S1*
+    - for 2p: *process2pass.csh* and *sh_creat_psokinv_downsample*
+  - *sh_unwrap_S1*  
+
+---
+
+- *Extra processing may need:*
+  - *sh_cat_ScanSAR*
+  - *sh_gamma2stamps*  
+    - *sh_grep_S1_dates*
+    - *sh_SLC_resample*
+  - *sh_gamma2licsbas*
+  - *sh_ml_aga*  
+    
+- [x]  All of the scripts run under `procdir` except `sh_gamma2stamps` and `sh_gamma2licsbas` which depend on whether the main working folder is `procdir` or `ml$nlook`.
+
 ***Use at your own risk.***
 
 #### Expected Structure: (for time series processing) ####
@@ -38,48 +66,9 @@ These scripts are used for batch processing Sentinel-1 time series, based on GAM
 *If you want to do multi-looking (downsampling) to the files like \*.diff, \*.cc or \*.geo.unw after you have finished the interferometry:* (the most likely case for it is that you did the interferometry with a small multi-looking factor and so there are too many pixels in every images, and hence it will be super time-demanding to do time series processing, for example, in StaMPS which cannot do such downsampling/multi-looking itself, therefore you may need to do multi-looking again to downsample the pixel number before StaMPS processing...)  
 (P.S. Mintpy and LiCSBAS support multi-looking/downsampling within the programs themselves. *NOTE: Please always consider a proper multi-look factor before you doing interferometry so you can avoid such problem at the beginning*.)  
 
-Under the `$procdir` folder, you could run `sh_ml_aga` to downsample the files, the `mlnlook` folder can be created.  
-Under the `mlnlook` folder, `sh_ml_aga` could generate a series of folder including `multi_looking`, `coreg`, `subset` as well as `unw` (if needed). Then you can run `sh_gamma2stamps` under `mlnlook`, note the input parameters of `sh_gamma2stamps` should be **ran_look x nlook** and **azi_look x nlook**! (the ran_look and azi_look are the input parameters in S1.cfg). Then the related folders and files needed by StaMPS would be generated in `mlnlook`.
-  
----------------------------------------------------------------------------------------------------
+Under the `$procdir` folder, you could run `sh_ml_aga` to downsample the files, the `mlnlook` folder can be created. Under the `mlnlook` folder, `sh_ml_aga` could generate a series of folder including `multi_looking`, `coreg`, `subset` as well as `unw` (if needed). Then you can run `sh_gamma2stamps` under `mlnlook`, note the input parameters of `sh_gamma2stamps` should be **ran_look x nlook** and **azi_look x nlook**! (the ran_look and azi_look are the input parameters in S1.cfg). Then the related folders and files needed by StaMPS would be generated in `mlnlook`.
 
-#### Scripts in S1_TS_proc ####
-- *For TS batch processing:*
-  - *sh_setup_gamma*
-  - *sh_gamma*
-  - *sh_read_cfg_S1*
-  - *sh_preprocess_S1*  
-    - *sh_grep_S1_dates*
-    - *sh_get_S1_opod*
-  - *sh_read_SLC_S1*
-  - *sh_multi_looking*  
-    - *sh_get_dem*
-  - *sh_coreg_S1*
-  - *sh_diff_S1*
-    - for 2p: *process2pass.csh* and *sh_creat_psokinv_downsample*
-  - *sh_unwrap_S1*  
-  - --
-
-- *Extra processing may need:*
-  - *sh_cat_ScanSAR*
-  - *sh_gamma2stamps*  
-    - *sh_grep_S1_dates*
-    - *sh_SLC_resample*
-  - *sh_gamma2licsbas*
-  - *sh_ml_aga*  
-    
-- [x]  All of the scripts run under ***\$procdir*** except *sh_gamma2stamps* and *sh_gamma2licsbas* which depend on whether the main working folder is ***\$procdir*** or ***ml$nlook***.
-
----------------------------------------------------------------------------------------------------
-
-#### Instruction of S1_TS_proc ####
-
-These scripts are employed to process the Sentinel-1 data, for time series processing.  
-  
-To process the Sentinel-1 data with GAMMA:
-1. Creating the table folder with "sh_setup_gamma" command ***UNDER THE PROJECT/PROCESS DIRECTORY*** (i.e. ***\$procdir***)  
-2. Editting the configure table as you need in the table folder
-3. Back to ***\$procdir*** directory, running *sh_gamma* for batch processing.
+-------
 
 **NOTE:**  
 - \$ori_SARdir (original SAR directory) and \$miss_type (mission type) are two of the inputing parameters of *sh_grep_S1_dates*, *sh_grep_S1_dates* would check the mission type (S1A and/or S1B) in original SAR ZIP directory firstly, if in original SAR directory there is/are:  
@@ -94,8 +83,6 @@ After batch processing, ***\$procdir*** should contain subfolder opod, dem, data
 	
 Checking the table directory to find the grep_dates_s1[ab] and the log files.
 
----------------------------------------------------------------------------------------------------
-
-With any problems, please contact  
+------
 :envelope: zelong@gfz-potsdam.de  
-:copyright: 2022, Zelong Guo, GFZ
+2022, Zelong Guo, GFZ
