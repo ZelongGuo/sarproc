@@ -1,50 +1,45 @@
-### S1_TS_proc ###
----------------------------------------------------------------------------------------------------
+# S1_TS_proc #
+
+These scripts are used for batch processing Sentinel-1 time series, based on GAMMA software.
+
+- Automatically downloading the DEM files.
+- Automatically downloading the precise orbit files.
+- Converting to [StaMPS](https://github.com/dbekaert/StaMPS) format for time series analysis.
+- Converting to [LiCSBAS](https://github.com/yumorishita/LiCSBAS) format for time series analysis.
+
+***Use at your own risk.***
+
 #### Expected Structure: (for time series processing) ####
-
 - *For normal processing:*  
-  ***$procdir*** -------------------------------- cwd of running *sh_gamma.sh*  
-  \| &ensp;\| &ensp;\| &ensp;\|---------------------------------- ***table*** (***MANDATORY***)  *sh_setup_gamma*  
-  \| &ensp;\| &ensp;\| &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;  &emsp;  &emsp;  &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; / *S1A_IW_SLC**  
-  \| &ensp;\| &ensp;\|------------------------------------- ***data (MANDATORY)*** &emsp; | ...  
-  \| &ensp;\| &ensp;\| &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;  &emsp;  &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; \ *S1B_IW_SLC**  
-  \| &ensp;\|---------------------------------------- ***opod*** (OPTIONAL: can be downloaded)  
-  \|------------------------------------------- ***dem*** (OPTIONAL: can be downloaded)  
-  ...  
-  Under ***\$procdir***, for **sh_gamma2stamps**, the input parameters: **ran_look** and **azi_look** are same with the parameters of *S1.cfg* in the *table* folder (if you want doing time series processing with ***StaMPS***).
+```
+|-- procdir    (cwd of running sh_gamma.sh)
+|    |-- table (MANDATORY, sh_setup_gamma)   
+|    |-- data  (MANDATORY, S1A_IW_SLC, S1B_IW_SLC)  
+|    |-- opod  (OPTIONAL: can be downloaded)  
+|    |-- dem   (OPTIONAL: can be downloaded)  
+|    |-- ...  
+```
+- *If you need to concatenate the SLCs of different frames, and/or do multilooking again:*  
+```
+|-- procdir    (cwd of running sh_gamma.sh)
+|    |-- table (MANDATORY, sh_setup_gamma)   
+|    |-- F477  (contains data, opod and table...)  \  
+|                                                   --> sh_gamma s1 ts data data   
+|    |-- F478  (contains data, opod and table...)  /  
+|    |-- data  (MANDATORY, sh_cat_ScanSAR)   
+|    |-- opod  (OPTIONAL: can be downloaded)  
+|    |-- dem   (OPTIONAL: can be downloaded)  
+|    |-- ...
+|    |-- mlnlook (multi_looking, coreg, subset and unw would be created in it) --> sh_ml_aga.sh  
+```
+  Under `procdir`, for `sh_gamma2stamps`, the input parameters: **ran_look** and **azi_look** are same with the parameters of *S1.cfg* in the *table* folder (if you want doing time series processing with ***StaMPS***). The pixels number in every images is larger because they have not been multi-looked/downsampled again.
 
 
-- *If you need to concatenate the SLCs of different frames:*  
-  ***$procdir***  -------------------------------- cwd of running *sh_gamma.sh*  
-  \| &ensp;\| &ensp;\| &ensp;\|---------------------------------- ***table*** (***MANDATORY***)  *sh_setup_gamma*  
-  \| &ensp;\| &ensp;\|-------------------------------------- ***F477*** (contains data, opod and table...)  \\  
-  \| &ensp;\| &ensp;\| &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;  &emsp;  &emsp;  &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;  &emsp;  ----> sh_gamma s1 ts data data   
-  \| &ensp;\| &ensp;\|-------------------------------------- ***F478*** (contains data, opod and table...)  /  
-  \| &ensp;\| &ensp;\|-------------------------------------- ***data (MANDATORY)***    &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;----> sh_cat_ScanSAR  
-  \| &ensp;\|----------------------------------------- ***opod*** (OPTIONAL: can be downloaded)  
-  \|-------------------------------------------- ***dem*** (OPTIONAL: can be downloaded)  
-    ...  
-  Under ***\$procdir***, for **sh_gamma2stamps**, the input parameters: **ran_look** and **azi_look** are same with the parameters of *S1.cfg* in the *table* folder (if you want doing time series processing with ***StaMPS***).
+*If you want to do multi-looking (downsampling) to the files like \*.diff, \*.cc or \*.geo.unw after you have finished the interferometry:* (the most likely case for it is that you did the interferometry with a small multi-looking factor and so there are too many pixels in every images, and hence it will be super time-demanding to do time series processing, for example, in StaMPS which cannot do such downsampling/multi-looking itself, therefore you may need to do multi-looking again to downsample the pixel number before StaMPS processing...)  
+(P.S. Mintpy and LiCSBAS support multi-looking/downsampling within the programs themselves. *NOTE: Please always consider a proper multi-look factor before you doing interferometry so you can avoid such problem at the beginning*.)  
 
-
-- *If you want to do multi-looking (downsampling) to the files like \*.diff, \*.cc or \*.geo.unw after you have finished the interferometry:* (the most likely case for it is that you did the interferometry with a small multi-looking factor and so there are too many pixels in every images, and hence it will be super time-demanding to do time series processing, for example, in StaMPS which cannot do such downsampling/multi-looking itself, therefore you may need to do multi-looking again to downsample the pixel number before StaMPS processing...)  
-  (P.S. Mintpy and LiCSBAS support multi-looking/downsampling within the programs themselves. *NOTE: Please always consider a proper multi-look factor before you doing interferometry so you can avoid such problem at the beginning*.)  
-  ***$procdir***  -------------------------------- cwd of running *sh_gamma.sh*  
-  \| &ensp;\| &ensp;\| &ensp;\|---------------------------------- ***table*** (***MANDATORY***)  *sh_setup_gamma*  
-  \| &ensp;\| &ensp;\|-------------------------------------- ***F477*** (contains data, opod and table...)  \\  
-  \| &ensp;\| &ensp;\| &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;  &emsp;  &emsp;  &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;  &emsp;  ----> sh_gamma s1 ts data data   
-  \| &ensp;\| &ensp;\|-------------------------------------- ***F478*** (contains data, opod and table...)  /  
-  \| &ensp;\| &ensp;\|-------------------------------------- ***data (MANDATORY)***    &emsp; &emsp; &emsp; &emsp; &emsp; &emsp;  &emsp;----> sh_cat_ScanSAR  
-  \| &ensp;\|----------------------------------------- ***opod*** (OPTIONAL: can be downloaded)  
-  \|-------------------------------------------- ***dem*** (OPTIONAL: can be downloaded)  
-  \|  
-  \|----- ***ml\$nlook*** (multi_looking, coreg, subset and unw would created in it)  &emsp; ----> sh_ml_aga.sh  
-    ...  
-  
-  Under ***\$procdir***, for **sh_gamma2stamps**, the input parameters: **ran_look** and **azi_look** are same with the parameters of *S1.cfg* in the *table* folder (if you want doing time series processing with ***StaMPS***). The pixels number in every images is larger because they have not been multi-looked/downsampled again.  
-  
-  Under the ***\$procdir*** folder, you could run *sh_ml_aga* to downsample the files, the the ***ml\$nlook*** folder can be created.  
-  Under the ***ml\$nlook*** folder, *sh_ml_aga* could generate a series of folder including ***multi_looking, coreg, subset*** as well as ***unw*** (if needed). Then you can run **sh_gamma2stamps** under ***ml\$nlook***, note the input parameters of *sh_gamma2stamps* should be **ran_look x nlook** and **azi_look x nlook**! (the ran_look and azi_look are the input parameters in S1.cfg). Then the related folders and files needed by StaMPS would be generated in ***ml\$nlook***.
+Under the `$procdir` folder, you could run `sh_ml_aga` to downsample the files, the `mlnlook` folder can be created.  
+Under the `mlnlook` folder, `sh_ml_aga` could generate a series of folder including `multi_looking`, `coreg`, `subset` as well as `unw` (if needed). Then you can run `sh_gamma2stamps` under `mlnlook`, note the input parameters of `sh_gamma2stamps` should be **ran_look x nlook** and **azi_look x nlook**! (the ran_look and azi_look are the input parameters in S1.cfg). Then the related folders and files needed by StaMPS would be generated in `mlnlook`.
   
 ---------------------------------------------------------------------------------------------------
 
