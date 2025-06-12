@@ -15,7 +15,11 @@
  #----- Program Grammar Explaination  -----#
  #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
- #+++++++++++++++++++++++++++++++++++++ update log ++++++++++++++++++++++++++++++++++++++++++++
+# -------------------------------
+# TODO: 90m dem downloading fails
+# -------------------------------
+
+#+++++++++++++++++++++++++++++++++++++ update log ++++++++++++++++++++++++++++++++++++++++++++
 # 10.12.2020, @ GFZ: debuged (500) Internal Server Error in wget with '-U "Opera 11.0"';
 #                          the option of displaying DEM is added;
 # 25.06.2022, @ GFZ: now the script also supports download the 90-m dem (3 arc second) 
