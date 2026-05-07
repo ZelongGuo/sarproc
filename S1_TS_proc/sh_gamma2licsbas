@@ -97,8 +97,8 @@ if [ $dis_flag == "yes" ] || [ $dis_flag == "y" ]; then
 	echo "NOW we are plotting the UE, UN and UU..."
 	echo "UE is plotting NOW..."
 	#=============================== UE ======================================
-	zmin=`gmt grdinfo ue.nc | grep 'z_min' | awk -F ' ' '{print $3}'`
-	zmax=`gmt grdinfo ue.nc | grep 'z_min' | awk -F ' ' '{print $5}'`
+	zmin=`gmt grdinfo ue.nc | grep 'v_min' | awk -F ' ' '{print $3}'`
+	zmax=`gmt grdinfo ue.nc | grep 'v_min' | awk -F ' ' '{print $5}'`
 
 	gmt makecpt -Cpolar -T$zmin/$zmax -D  > temp.cpt
 	gmt set MAP_FRAME_TYPE Plain
@@ -109,8 +109,8 @@ if [ $dis_flag == "yes" ] || [ $dis_flag == "y" ]; then
 	echo "UE plotting is done..."
 	#=============================== UN ======================================
 	echo "UN is plotting NOW..."
-	zmin=`gmt grdinfo un.nc | grep 'z_min' | awk -F ' ' '{print $3}'`
-	zmax=`gmt grdinfo un.nc | grep 'z_min' | awk -F ' ' '{print $5}'`
+	zmin=`gmt grdinfo un.nc | grep 'v_min' | awk -F ' ' '{print $3}'`
+	zmax=`gmt grdinfo un.nc | grep 'v_min' | awk -F ' ' '{print $5}'`
 
 	gmt makecpt -Cpolar -T$zmin/$zmax -D  > temp.cpt
 	gmt set MAP_FRAME_TYPE Plain
@@ -121,8 +121,8 @@ if [ $dis_flag == "yes" ] || [ $dis_flag == "y" ]; then
 	echo "UN plotting is done..."
 	#=============================== UU ======================================
 	echo "UU is plotting NOW..."
-	zmin=`gmt grdinfo uu.nc | grep 'z_min' | awk -F ' ' '{print $3}'`
-	zmax=`gmt grdinfo uu.nc | grep 'z_min' | awk -F ' ' '{print $5}'`
+	zmin=`gmt grdinfo uu.nc | grep 'v_min' | awk -F ' ' '{print $3}'`
+	zmax=`gmt grdinfo uu.nc | grep 'v_min' | awk -F ' ' '{print $5}'`
 
 	gmt makecpt -Cpolar -T$zmin/$zmax -D  > temp.cpt
 	gmt set MAP_FRAME_TYPE Plain
